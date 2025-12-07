@@ -1,0 +1,3987 @@
+#property copyright "Copyright 2021, MetaQuotes Software Corp.";
+#property link "https://www.mql5.com";
+#property version "1.00";
+#property strict
+
+//+------------------------------------------------------------------+
+//| 外部参数设置                                                      |
+//+------------------------------------------------------------------+
+ string AccountRestrictionSettings = "===== 账号限制设置 =====";
+ bool EnableAccountCheck = true;                    // 启用账号检查
+ bool EnableTimeLimit = true;                       // 启用时间限制
+ 
+static int AllowedAccountHashes[] = {0x11C6DF97,0x11C6DF98,0x1AED44FE};        // 允许的账号
+
+extern string ServerNameRestriction = "";                 // 平台限制
+extern string AccountErrorMsg = "没有绑定该账号,请联系..."; // 没有授权提示
+extern string TimeExpiredMsg = "使用期限已到,请联系作者:"; // 时间到期提示
+extern string ServerErrorMsg = "请联系作者:";            // 订单注释
+
+extern string TradingSettings = "===== 交易设置 =====";
+extern int MagicNumber = 20251027;                        // 魔术号
+extern int LotDigits = 1;                                 // 手数小数位数
+extern int MaxSpread = 10000;                            // 最大点差
+extern double MaxSpreadAmount = 20000;                    // 最大点差金额
+extern int MAPeriod = 0;                                  // MA周期（0=当前K线）
+extern double MAStopLossPips = 1000;                      // MA止损点数
+extern double BaseLot = 0.04;                             // 基础手数
+extern double OpenLot = 0.04;                             // 开仓手数（开仓修改这个）
+extern bool UseEquityStopLoss = false;                    // 使用权益止损
+extern int EquityStopLossPercent = 1;                     // 权益止损百分比
+extern int MaxHoldTime = 300;                             // 最大持仓时间（秒）
+extern int MaxPositions = 45;                             // 最大持仓数量
+extern int AddPositionInterval = 1;                       // 加仓间隔
+extern double LotMultiplier = 1.3;                        // 手数倍数
+extern double CloseProfitDivisor = 0.04;                  // 平仓盈利除数
+extern double CloseProfitMultiplier = 1.5;                // 平仓盈利倍数
+extern bool EnableTimeControl = true;                     // 启用时间控制
+extern bool EnableNewsFilter = false;                     // 启用新闻过滤
+extern string StartTime = "02:00";                        // 开始时间
+extern string EndTime = "23:00";                          // 结束时间
+extern int MaxAddPositions = 10;                          // 最大加仓次数
+static int AccountHashMagic = 0x1A2B3C4D;                
+//------------------------------------------------------------------------------------------
+static long ExpiryTimestamp = 1764806400;                // 到期时间戳--2025-12-31
+
+// 修改到期时间去这个网站转换：https://www.epochconverter.com/
+
+struct orderdata
+{
+   public:
+      int m_0;
+      int m_4;
+      int m_8;
+      int m_12;
+      int m_16;
+      int m_20;
+      bool m_24;
+      bool m_25;
+      double m_26;
+      double m_34;
+      double m_42;
+      double m_50;
+      double m_58;
+      double m_66;
+      double m_74;
+      double m_82;
+      double m_90;
+      double m_98;
+      datetime m_106;
+      datetime m_114;
+      datetime m_122;
+};
+
+struct OrderTotal
+{
+   public:
+      string m_0;
+      int m_12;
+      int m_16;
+      int m_20;
+      int m_24[];
+      string m_76;
+      string m_88[];
+      datetime m_140;
+      datetime m_148;
+      int m_156;
+      int m_160;
+      double m_164;
+      double m_172;
+      double m_180;
+      ~OrderTotal()
+      {
+         ArrayFree(m_88);
+         ArrayFree(m_24);
+      }
+
+      void func_1129()
+      {
+         if (ArraySize(m_24) != 0) { 
+         //Return_Address_00000007 = m_24.m_28;
+         Return_Integer_00000007 = returned_i;
+         } 
+         if (ArraySize(m_88) != 0) { 
+         //Return_Address_00000007 = m_88.m_28;
+         } 
+      }
+
+};
+
+struct ValueMA
+{
+   public:
+      int m_0;
+      int m_4;
+      int m_8;
+      int m_12;
+};
+
+
+struct OrderData : public orderdata
+{
+   public:
+      string m_130;
+      string m_142;
+      void func_1010()
+      {
+      }
+
+      OrderData()
+      {
+      }
+
+      void func_1128()
+      {
+      }
+
+};
+
+
+class COrder
+{
+   public:
+      OrderData m_16;
+
+      void func_1025()
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         string tmp_str0002;
+         string tmp_str0003;
+
+m_16.m_8 = OrderType();
+m_16.m_130 = OrderSymbol();
+m_16.m_4 = OrderMagicNumber();
+m_16.m_142 = OrderComment();
+m_16.m_114 = OrderCloseTime();
+m_16.m_106 = OrderOpenTime();
+m_16.m_42 = OrderOpenPrice();
+m_16.m_50 = OrderClosePrice();
+m_16.m_58 = OrderStopLoss();
+m_16.m_66 = OrderTakeProfit();
+m_16.m_34 = OrderLots();
+m_16.m_74 = OrderProfit();
+m_16.m_82 = OrderCommission();
+m_16.m_90 = OrderSwap();
+m_16.m_122 = OrderExpiration();
+m_16.m_26 = MarketInfo(m_16.m_130, MODE_POINT);
+m_16.m_98 = ((m_16.m_74 + m_16.m_82) + m_16.m_90);
+         tmp_str0000 = m_16.m_142;
+         Gi_0000 = 0;
+         if (StringFind(tmp_str0000, "from #", 0) > -1) { 
+         Gi_0001 = (int)StringToInteger(StringSubstr(tmp_str0000, 6, 0));
+         Gi_0000 = Gi_0001;
+         } 
+m_16.m_12 = Gi_0000;
+         tmp_str0001 = m_16.m_142;
+         Gi_0001 = 0;
+         if (StringFind(tmp_str0001, "to #", 0) > -1) { 
+         Gi_0002 = (int)StringToInteger(StringSubstr(tmp_str0001, 4, 0));
+         Gi_0001 = Gi_0002;
+         } 
+m_16.m_16 = Gi_0001;
+         tmp_str0002 = m_16.m_142;
+m_16.m_24 = (StringFind(tmp_str0002, "[sl", 0) > -1);
+         tmp_str0003 = m_16.m_142;
+m_16.m_25 = (StringFind(tmp_str0003, "[tp", 0) > -1);
+         Gi_0002 = 0;
+         if ((m_16.m_8 != 0 && m_16.m_8 != 1) || (m_16.m_26 == 0)) {
+         
+         Gi_0003 = 0;
+         }
+         else{
+         if (m_16.m_8 == 0) { 
+         Gd_0004 = (m_16.m_50 - m_16.m_42);
+         Gi_0004 = (int)(Gd_0004 / m_16.m_26);
+         Gi_0002 = Gi_0004;
+         } 
+         else { 
+         Gd_0004 = (m_16.m_42 - m_16.m_50);
+         Gi_0004 = (int)(Gd_0004 / m_16.m_26);
+         Gi_0002 = Gi_0004;
+         } 
+         Gi_0003 = Gi_0002;
+         }
+m_16.m_20 = Gi_0003;
+      }
+
+};
+
+class CPosition
+{
+   public:
+      OrderData m_208[];
+      OrderTotal m_260;
+      OrderTotal m_16;
+      int m_204;
+      void func_1039(int Fa_i_00, int Fa_i_01, string Fa_s_02, int Fa_i_03, string Fa_s_04, long Fa_l_05, long Fa_l_06)
+      {
+         ArrayFree(m_208);
+m_260.func_1129();
+m_260.m_0 = m_16.m_0;
+m_260.m_12 = m_16.m_12;
+m_260.m_16 = m_16.m_16;
+m_260.m_20 = m_16.m_20;
+         ArrayCopy(m_260.m_24, m_16.m_24, 0, 0, 0);
+m_260.m_76 = m_16.m_76;
+         ArrayCopy(m_260.m_88, m_16.m_88, 0, 0, 0);
+m_260.m_140 = m_16.m_140;
+m_260.m_148 = m_16.m_148;
+m_260.m_156 = m_16.m_156;
+m_260.m_160 = m_16.m_160;
+m_260.m_164 = m_16.m_164;
+m_260.m_172 = m_16.m_172;
+m_260.m_180 = m_16.m_180;
+m_16.m_16 = Fa_i_00;
+m_16.m_12 = Fa_i_01;
+m_16.m_0 = Fa_s_02;
+m_16.m_20 = Fa_i_03;
+m_16.m_76 = Fa_s_04;
+m_16.m_140 = (int)Fa_l_05;
+m_16.m_148 = (int)Fa_l_06;
+m_260.m_0 = m_16.m_0;
+m_260.m_12 = m_16.m_12;
+m_260.m_16 = m_16.m_16;
+m_260.m_20 = m_16.m_20;
+         ArrayCopy(m_260.m_24, m_16.m_24, 0, 0, 0);
+m_260.m_76 = m_16.m_76;
+         ArrayCopy(m_260.m_88, m_16.m_88, 0, 0, 0);
+m_260.m_140 = m_16.m_140;
+m_260.m_148 = m_16.m_148;
+m_260.m_156 = m_16.m_156;
+m_260.m_160 = m_16.m_160;
+m_260.m_164 = m_16.m_164;
+m_260.m_172 = m_16.m_172;
+m_260.m_180 = m_16.m_180;
+         func_1046();
+      }
+
+      void func_1046()
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         int Li_FFF8;
+         int Li_FFF4;
+         double Ld_FFE8;
+         int Li_FFE4;
+         COrder Local_Pointer_FFFFFF38;
+         string Ls_FF38;
+
+
+         ArrayFree(m_208);
+m_260.func_1129();
+m_260.m_0 = m_16.m_0;
+m_260.m_12 = m_16.m_12;
+m_260.m_16 = m_16.m_16;
+m_260.m_20 = m_16.m_20;
+         ArrayCopy(m_260.m_24, m_16.m_24, 0, 0, 0);
+m_260.m_76 = m_16.m_76;
+         ArrayCopy(m_260.m_88, m_16.m_88, 0, 0, 0);
+m_260.m_140 = m_16.m_140;
+m_260.m_148 = m_16.m_148;
+m_260.m_156 = 0;
+m_260.m_160 = m_16.m_160;
+m_260.m_164 = 0;
+m_260.m_172 = 0;
+m_260.m_180 = m_16.m_180;
+         Li_FFF8 = OrdersTotal();
+         if (Li_FFF8 <= 0) {
+         m_16.m_156 = m_260.m_156;
+         m_16.m_172 = m_260.m_172;
+         return; 
+         }
+         Li_FFF4 = 0;
+         Ld_FFE8 = 0;
+         Li_FFE4 = 0;
+         if (Li_FFF8 > 0) { 
+         do { 
+         if (OrderSelect(Li_FFE4, 0, 0) == true) { 
+         Gi_0001 = OrderTicket();
+         Local_Pointer_FFFFFF38.m_16.m_0 = Gi_0001;
+         if (Gi_0001 > 0) { 
+         Local_Pointer_FFFFFF38.func_1025();
+         } 
+         else { 
+         Local_Pointer_FFFFFF38.m_16.func_1128();
+         } 
+         Ls_FF38 = Local_Pointer_FFFFFF38.m_16.m_142;
+         if (m_260.m_0 == "" || Local_Pointer_FFFFFF38.m_16.m_130 == m_260.m_0) { 
+         if (func_1071(Local_Pointer_FFFFFF38.m_16.m_8, m_260.m_12) == true) { 
+         if (Li_FFF4 >= ArraySize(m_208)) { 
+         ArrayResize(m_208, (ArraySize(m_208) + 64), 0);
+         } 
+         func_1073(m_16.m_16, m_208, Local_Pointer_FFFFFF38.m_16, Li_FFF4);
+m_260.m_164 = (m_260.m_164 + Local_Pointer_FFFFFF38.m_16.m_98);
+m_260.m_172 = (m_260.m_172 + Local_Pointer_FFFFFF38.m_16.m_34);
+         Ld_FFE8 = ((Local_Pointer_FFFFFF38.m_16.m_34 * Local_Pointer_FFFFFF38.m_16.m_42) + Ld_FFE8);
+         Li_FFF4 = Li_FFF4 + 1;
+         }}
+         }
+         Li_FFE4 = Li_FFE4 + 1;
+         } while (Li_FFE4 < Li_FFF8);
+         }
+         ArrayResize(m_208, Li_FFF4, 0);
+m_260.m_156 = Li_FFF4;
+m_204 = Li_FFF8;
+m_16.m_156 = m_260.m_156;
+m_16.m_172 = m_260.m_172;
+         if ((m_260.m_172 <= 0)) {
+         return; 
+         }
+m_260.m_180 = (Ld_FFE8 / m_260.m_172);
+         
+      }
+
+   private:
+
+      void func_1047()
+      {
+
+         ArrayFree(m_208);
+m_260.func_1129();
+m_260.m_0 = m_16.m_0;
+m_260.m_12 = m_16.m_12;
+m_260.m_16 = m_16.m_16;
+m_260.m_20 = m_16.m_20;
+         ArrayCopy(m_260.m_24, m_16.m_24, 0, 0, 0);
+m_260.m_76 = m_16.m_76;
+         ArrayCopy(m_260.m_88, m_16.m_88, 0, 0, 0);
+m_260.m_140 = m_16.m_140;
+m_260.m_148 = m_16.m_148;
+m_260.m_156 = m_16.m_156;
+m_260.m_160 = m_16.m_160;
+m_260.m_164 = m_16.m_164;
+m_260.m_172 = m_16.m_172;
+m_260.m_180 = m_16.m_180;
+      }
+
+};
+
+class CMain
+{
+   public:
+      CPosition* m_16;
+      CPosition* m_24;
+      CPosition* m_32;
+      CPosition* m_40;
+      string m_48;
+      int m_60;
+      string m_64;
+      int m_76;
+      datetime m_80;
+      datetime m_88;
+      bool m_96;
+      bool m_97;
+      bool m_98;
+      ValueMA m_99;
+      double m_115[];
+      bool m_167;
+      datetime m_168;
+      void func_1053(string Fa_s_00, int Fa_i_01, string Fa_s_02, int Fa_i_03)
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         string tmp_str0002;
+         string tmp_str0003;
+         string tmp_str0004;
+         string tmp_str0005;
+         string tmp_str0006;
+         string tmp_str0007;
+         string tmp_str0008;
+         string tmp_str0009;
+         string tmp_str000A;
+         string tmp_str000B;
+         string tmp_str000C;
+         string tmp_str000D;
+         string tmp_str000E;
+         string tmp_str000F;
+
+m_48 = Fa_s_00;
+m_60 = Fa_i_01;
+m_64 = Fa_s_02;
+m_76 = Fa_i_03;
+m_98 = true;
+m_99.m_12 = Ii_00F0;
+m_99.m_8 = Ii_00EC;
+m_99.m_4 = Ii_00E8;
+m_99.m_0 = Ii_00E4;
+
+         Gi_0000 = CheckPointer(m_16);
+         if (Gi_0000 == 1) { 
+         ArrayFree(m_16.m_208);
+         } 
+         delete m_16;
+         Gi_0001 = CheckPointer(m_24);
+         if (Gi_0001 == 1) { 
+         ArrayFree(m_24.m_208);
+         } 
+         delete m_24;
+
+         Gi_0002 = CheckPointer(m_32);
+         if (Gi_0002 == 1) { 
+         ArrayFree(m_32.m_208);
+         } 
+         delete m_32;
+
+         Gi_0003 = CheckPointer(m_40);
+         if (Gi_0003 == 1) { 
+         ArrayFree(m_40.m_208);
+         } 
+         delete m_40;
+         
+m_16 = new CPosition();
+         tmp_str0000 = m_64;
+         tmp_str0001 = m_48;
+         tmp_str0002 = tmp_str0000;
+         tmp_str0003 = tmp_str0001;
+m_16.func_1039(11, 0, tmp_str0003, m_60, tmp_str0002, 0, 32527353599);
+
+m_24 = new CPosition();
+         tmp_str0004 = m_64;
+         tmp_str0005 = m_48;
+         tmp_str0006 = tmp_str0004;
+         tmp_str0007 = tmp_str0005;
+m_24.func_1039(11, 1, tmp_str0007, m_60, tmp_str0006, 0, 32527353599);
+
+m_32 = new CPosition();
+         tmp_str0008 = m_64;
+         tmp_str0009 = m_48;
+         tmp_str000A = tmp_str0008;
+         tmp_str000B = tmp_str0009;
+m_32.func_1039(11, 6, tmp_str000B, m_60, tmp_str000A, 0, 32527353599);
+
+m_40 = new CPosition();
+         tmp_str000C = m_64;
+         tmp_str000D = m_48;
+         tmp_str000E = tmp_str000C;
+         tmp_str000F = tmp_str000D;
+m_40.func_1039(11, 8, tmp_str000F, m_60, tmp_str000E, 0, 32527353599);
+
+      }
+
+      void func_1054()
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         string tmp_str0002;
+         string tmp_str0003;
+         string tmp_str0004;
+         string tmp_str0005;
+         string tmp_str0006;
+         string tmp_str0007;
+         string tmp_str0008;
+         string tmp_str0009;
+         string tmp_str000A;
+         string tmp_str000B;
+         string tmp_str000C;
+         string tmp_str000D;
+         string tmp_str000E;
+         string tmp_str000F;
+         string tmp_str0010;
+         string tmp_str0011;
+         string tmp_str0012;
+         string tmp_str0013;
+         string tmp_str0014;
+         string tmp_str0015;
+         string tmp_str0016;
+         string tmp_str0017;
+         string tmp_str0018;
+         string tmp_str0019;
+         string tmp_str001A;
+
+         m_16.func_1046();
+         m_24.func_1046();
+         m_32.func_1046();
+         m_40.func_1046();
+         tmp_str0000 = m_48;
+         Id_0130 = Id_0120;
+         Id_0128 = Id_0118;
+         Id_0120 = MarketInfo(tmp_str0000, MODE_BID);
+         Id_0118 = MarketInfo(tmp_str0000, MODE_ASK);
+         Id_0138 = MarketInfo(tmp_str0000, MODE_POINT);
+         Ii_0140 = (int)MarketInfo(tmp_str0000, MODE_DIGITS);
+         Ii_0144 = (int)MarketInfo(tmp_str0000, MODE_SPREAD);
+         Id_0148 = (int)MarketInfo(tmp_str0000, MODE_STOPLEVEL);
+         tmp_str0001 = m_48;
+         if (m_168 != iTime(tmp_str0001, m_76, 0)) { 
+m_168 = iTime(tmp_str0001, m_76, 0);
+         Gb_0001 = true;
+         } 
+         else { 
+         Gb_0001 = false;
+         } 
+m_167 = Gb_0001;
+         Gl_0002 = TimeCurrent();
+         tmp_str0002 = Is_00D8;
+         tmp_str0003 = Is_00C8;
+         if (Ib_00C1 == 0) { 
+         Gb_0003 = true;
+         } 
+         else { 
+         Gi_0004 = (int)tmp_str0003;
+         if (Gi_0004 < 0) { 
+         tmp_str0003 = "00:00";
+         } 
+         Gi_0004 = (int)tmp_str0002;
+         if (Gi_0004 >= 24) { 
+         tmp_str0002 = "23:59:59";
+         } 
+         tmp_str0004 = TimeToString(Gl_0002, 1);
+         tmp_str0004 = tmp_str0004 + " ";
+         tmp_str0004 = tmp_str0004 + tmp_str0003;
+         Gl_0004 = (long)tmp_str0004;
+         Gl_0005 = Gl_0004;
+         tmp_str0004 = TimeToString(Gl_0002, 1);
+         tmp_str0004 = tmp_str0004 + " ";
+         tmp_str0004 = tmp_str0004 + tmp_str0002;
+         Gl_0006 = (long)tmp_str0004;
+         Gl_0007 = Gl_0006;
+         if (Gl_0006 < Gl_0004) {
+         if (Gl_0002 <= Gl_0006 || Gl_0002 >= Gl_0004) {
+         
+         Gb_0003 = true;
+         }}
+         else{
+         if (Gl_0002 >= Gl_0005 && Gl_0002 <= Gl_0007) {
+         Gb_0003 = true;
+         }
+         else{
+         Gb_0003 = false;
+         }}} 
+m_98 = Gb_0003;
+         Gi_0006 = 3;
+         Gi_0008 = 0;
+         Gi_0009 = m_76;
+         tmp_str0004 = m_48;
+         ArrayResize(m_115, 3, 0);
+         ArrayInitialize(m_115, 2147483647);
+         Gi_000C = Gi_0008;
+         Gi_000D = Gi_0006 + Gi_0008;
+         if (Gi_0008 < Gi_000D) { 
+         do { 
+         Gi_000D = iBars(tmp_str0004, Gi_0009) - 2;
+         if (Gi_000C >= Gi_000D) break; 
+         Gi_0010 = Gi_000C - Gi_0008;
+m_115[Gi_0010] = iMA(tmp_str0004, Gi_0009, m_99.m_0, m_99.m_4, m_99.m_8, m_99.m_12, Gi_000C);
+         Gi_000C = Gi_000C + 1;
+         Gi_0011 = Gi_0006 + Gi_0008;
+         } while (Gi_000C < Gi_0011); 
+         } 
+         Gb_0011 = false;
+         if (Ii_0074 == 0 || m_167 == true) {
+         
+         if ((m_115[Ii_0074] > 0) && (m_115[Ii_0074] != 2147483647) && (m_115[Ii_0074] < Id_0120 * 10) && (m_115[Ii_0074] > Id_0120 * 0.1)) { 
+         // 开多信号：当价格在MA下方时（MA > 价格），应该开多（价格会上涨到MA）
+         Gd_0014 = (m_115[Ii_0074] - Id_0120);
+         Gb_0014 = (Gd_0014 > (Ii_0094 * Id_0138));
+         if (Gb_0014) { 
+         Gb_0011 = true;
+         }}}
+m_96 = Gb_0011;
+         Gb_0014 = false;
+         if (Ii_0074 == 0 || m_167 == true) {
+         
+         if ((m_115[Ii_0074] > 0) && (m_115[Ii_0074] != 2147483647) && (m_115[Ii_0074] < Id_0120 * 10) && (m_115[Ii_0074] > Id_0120 * 0.1)) { 
+         // 开空信号：当价格在MA上方时（价格 > MA），应该开空（价格会下跌到MA）
+         Gd_0017 = (Id_0120 - m_115[Ii_0074]);
+         if ((Gd_0017 > (Ii_0094 * Id_0138))) { 
+         Gb_0014 = true;
+         }}}
+m_97 = Gb_0014;
+         tmp_str0005 = m_64;
+         tmp_str0006 = m_48;
+         func_1063(Ib_00C0, Id_00B0, Id_00B8, tmp_str0006, m_60, tmp_str0005, 0, 2237106, 2);
+         tmp_str0007 = m_64;
+         tmp_str0008 = m_48;
+         if (m_98 == true) { 
+         Gi_001B = m_16.m_260.m_156 + m_32.m_260.m_156;
+         if (Gi_001B <= 0 && m_96 == true) { 
+         if (Ib_0090 == 0) { 
+         Id_0110 = Id_0088;
+         } 
+         else { 
+         Gd_001B = 0;
+         Gd_001B = ((AccountEquity() / Id_0078) * Id_0080);
+         tmp_str0009 = tmp_str0008;
+         func_1076(tmp_str0009, Gd_001B, true);
+         Id_0110 = Gd_001B;
+         } 
+         tmp_str000A = tmp_str0007;
+         tmp_str000B = tmp_str0008;
+         if (func_1080(tmp_str000B, Id_0110, Ii_0104, Ii_0108, m_60, tmp_str000A, 0, 0, 0, 16711680, 2) > 0) { 
+m_80 = iTime(tmp_str0008, m_76, 0);
+Sleep(500);
+RefreshRates();
+Sleep(100);
+m_16.func_1046();
+m_32.func_1046();
+         }}} 
+         tmp_str000C = m_64;
+         tmp_str000D = m_48;
+         if (m_98 == true) { 
+         Gi_0020 = m_24.m_260.m_156 + m_40.m_260.m_156;
+         if (Gi_0020 <= 0 && m_97 == true) { 
+         if (Ib_0090 == 0) { 
+         Id_0110 = Id_0088;
+         } 
+         else { 
+         Gd_0020 = 0;
+         Gd_0020 = ((AccountEquity() / Id_0078) * Id_0080);
+         tmp_str000E = tmp_str000D;
+         func_1076(tmp_str000E, Gd_0020, true);
+         Id_0110 = Gd_0020;
+         } 
+         tmp_str000F = tmp_str000C;
+         tmp_str0010 = tmp_str000D;
+         if (func_1081(tmp_str0010, Id_0110, Ii_0104, Ii_0108, m_60, tmp_str000F, 0, 0, 0, 255, 2) > 0) { 
+m_88 = iTime(tmp_str000D, m_76, 0);
+Sleep(500);
+RefreshRates();
+Sleep(100);
+m_24.func_1046();
+m_40.func_1046();
+         }}} 
+         tmp_str0011 = m_64;
+         tmp_str0012 = m_48;
+         func_1058(tmp_str0012, m_60, tmp_str0011, Id_00A8, Ii_0098, Ii_009C);
+         tmp_str0013 = m_64;
+         tmp_str0014 = m_48;
+         func_1089(tmp_str0014, Ii_009C, Ii_0104, Ii_0108, m_60, tmp_str0013, 12, Ii_00A0, (int)4294967295, 2);
+         Gi_0021 = 5;
+         tmp_str0015 = m_64;
+         Gi_0022 = m_60;
+         tmp_str0016 = m_48;
+         Gi_0023 = 0;
+         Gi_0024 = HistoryTotal() - 1;
+         Gi_0025 = Gi_0024;
+         if (Gi_0024 >= 0) { 
+         do { 
+         if (OrderSelect(Gi_0025, 0, 1) == true) { 
+         if (tmp_str0016 == "" || OrderSymbol() == tmp_str0016) {
+         
+         if (Gi_0022 == -1 || OrderMagicNumber() == Gi_0022) {
+         
+         if (tmp_str0015 == "" || tmp_str0015 == ""
+         || StringFind(OrderComment(), tmp_str0015, 0) == false
+         || OrderComment() == tmp_str0015) {
+         
+         if (OrderType() < OP_BUYLIMIT) { 
+         if (OrderCloseTime() < Il_0160) break; 
+         Gd_0024 = OrderProfit();
+         Gd_0024 = (Gd_0024 + OrderCommission());
+         if ((Gd_0024 + OrderSwap()) > 0) break; 
+         Gl_0024 = OrderCloseTime();
+         Gl_0024 = Gl_0024 - OrderOpenTime();
+         if (Gl_0024 > 3) break; 
+         Gi_0023 = Gi_0023 + 1;
+         }}}}} 
+         Gi_0025 = Gi_0025 - 1;
+         } while (Gi_0025 >= 0); 
+         } 
+         if (Gi_0023 < Gi_0021) return; 
+         tmp_str0018 = tmp_str0015;
+         tmp_str0019 = tmp_str0016;
+         func_1085(tmp_str0019, Gi_0022, 10, tmp_str0018, 0, 2237106, 2);
+         Gi_0024 = 0;
+         do { 
+         Sleep(1000);
+         tmp_str001A = "★Risk warning: the number of fast-in and fast-out is greater than" + IntegerToString(Gi_0021, 0, 32);
+         tmp_str001A = tmp_str001A + ",";
+         tmp_str001A = tmp_str001A + "\n                       In order to protect the account, expert has stopped running.";
+         tmp_str001A = tmp_str001A + "\n                       Please check whether the settings of opening and closing positions conflict.";
+         tmp_str001A = tmp_str001A + "\n                       ";
+         tmp_str001A = tmp_str001A + TimeToString(TimeCurrent(), 3);
+         Alert(tmp_str001A);
+         Gi_0024 = Gi_0024 + 1;
+         } while (Gi_0024 < 3); 
+         ExpertRemove();
+         
+      }
+
+   private:
+
+      void func_1055()
+      {
+         Gi_0001 = CheckPointer(m_16);
+         if (Gi_0001 == 1) { 
+         ArrayFree(m_16.m_208);
+         } 
+         delete m_16;
+         Gi_0003 = CheckPointer(m_24);
+         if (Gi_0003 == 1) { 
+         ArrayFree(m_24.m_208);
+         } 
+         delete m_24;
+         Gi_0005 = CheckPointer(m_32);
+         if (Gi_0005 == 1) { 
+         ArrayFree(m_32.m_208);
+         } 
+         delete m_32;
+         Gi_0007 = CheckPointer(m_40);
+         if (Gi_0007 == 1) { 
+         ArrayFree(m_40.m_208);
+         } 
+         delete m_40;
+      }
+
+      void func_1058(string Fa_s_00, int Fa_i_01, string Fa_s_02, double Fa_d_03, int Fa_i_04, int Fa_i_05)
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         string tmp_str0002;
+         string tmp_str0003;
+         string tmp_str0004;
+         string tmp_str0005;
+         string tmp_str0006;
+         string tmp_str0007;
+         string tmp_str0008;
+         string tmp_str0009;
+         string tmp_str000A;
+         string tmp_str000B;
+         string tmp_str000C;
+         string tmp_str000D;
+         int Li_FFF8;
+
+         if (Ii_0144 > Ii_0060) return; 
+m_16.func_1046();
+         Li_FFF8 = m_16.m_260.m_156;
+         if (Li_FFF8 > 0 && ArraySize(m_32.m_208) <= 0) { 
+         Gd_0004 = (m_16.m_208[0].m_42 - Id_0118);
+         if ((Gd_0004 >= (Fa_i_04 * Id_0138))) { 
+         Gd_0005 = m_16.m_208[0].m_34;
+         Gi_0006 = Li_FFF8 - 1;
+         Gd_0007 = m_16.m_208[Gi_0006].m_34;
+         tmp_str0000 = Fa_s_00;
+         Gd_0008 = 0;
+         Gd_0008 = (Gd_0005 * Fa_d_03);
+         tmp_str0001 = tmp_str0000;
+         func_1076(tmp_str0001, Gd_0008, true);
+         if ((Gd_0008 <= Gd_0005)) { 
+         returned_double = MathPow(Fa_d_03, Li_FFF8);
+         Gd_0008 = (Gd_0007 * returned_double);
+         tmp_str0002 = tmp_str0000;
+         func_1076(tmp_str0002, Gd_0008, true);
+         } 
+         Id_0110 = Gd_0008;
+         if (Ii_005C == 0) {
+         tmp_str0003 = Fa_s_02;
+         tmp_str0004 = Fa_s_00;
+         if (func_1080(tmp_str0004, Gd_0008, Ii_0104, Ii_0108, Fa_i_01, tmp_str0003, 0, 0, 0, 16711680, 2) > 0) {
+m_16.func_1046();
+         }}
+         else{
+         tmp_str0005 = Fa_s_02;
+         tmp_str0006 = Fa_s_00;
+         if (func_1087(tmp_str0006, ((Fa_i_05 * Id_0138) + Id_0118), Id_0110, Ii_0104, Ii_0108, Fa_i_01, tmp_str0005, 0, 0, 0, 0, 16711680, 2) > 0) { 
+m_16.func_1046();
+         }}}} 
+m_24.func_1046();
+         Li_FFF8 = m_24.m_260.m_156;
+         if (Li_FFF8 <= 0) return; 
+         if (m_40.m_260.m_156 > 0) return; 
+         Gi_000E = Li_FFF8 - 1;
+         Gd_0010 = (Id_0120 - m_24.m_208[Gi_000E].m_42);
+         if ((Gd_0010 < (Fa_i_04 * Id_0138))) return; 
+         Gi_0010 = Gi_000E;
+         Gd_0011 = m_24.m_208[Gi_000E].m_34;
+         Gd_0013 = m_24.m_208[0].m_34;
+         tmp_str0007 = Fa_s_00;
+         Gd_0014 = 0;
+         Gd_0014 = (Gd_0011 * Fa_d_03);
+         tmp_str0008 = tmp_str0007;
+         func_1076(tmp_str0008, Gd_0014, true);
+         if ((Gd_0014 <= Gd_0011)) { 
+         returned_double = MathPow(Fa_d_03, Li_FFF8);
+         Gd_0014 = (Gd_0013 * returned_double);
+         tmp_str0009 = tmp_str0007;
+         func_1076(tmp_str0009, Gd_0014, true);
+         } 
+         Id_0110 = Gd_0014;
+         if (Ii_005C == 0) { 
+         tmp_str000A = Fa_s_02;
+         tmp_str000B = Fa_s_00;
+         if (func_1081(tmp_str000B, Gd_0014, Ii_0104, Ii_0108, Fa_i_01, tmp_str000A, 0, 0, 0, 255, 2) <= 0) return; 
+m_24.func_1046();
+         return ;
+         } 
+         tmp_str000C = Fa_s_02;
+         Gd_0016 = (Fa_i_05 * Id_0138);
+         tmp_str000D = Fa_s_00;
+         if (func_1088(tmp_str000D, (Id_0120 - Gd_0016), Id_0110, Ii_0104, Ii_0108, Fa_i_01, tmp_str000C, 0, 0, 0, 0, 255, 2) <= 0) return; 
+m_24.func_1046();
+         
+      }
+
+      int func_1063(bool FuncArg_Boolean_00000000, double Fa_d_01, double Fa_d_02, string Fa_s_03, int Fa_i_04, string Fa_s_05, int Fa_i_06, int Fa_i_07, int Fa_i_08)
+      {
+         string tmp_str0000;
+         string tmp_str0001;
+         string tmp_str0002;
+         string tmp_str0003;
+         int Li_FFF4;
+         int Li_FFF0;
+         double Ld_FFE8;
+         double Ld_FFE0;
+         int Li_FFDC;
+         int Li_FFF8;
+
+m_16.func_1046();
+m_24.func_1046();
+         Li_FFF4 = 0;
+         Li_FFF0 = 0;
+         Ld_FFE8 = 0;
+         Ld_FFE0 = 0;
+         Li_FFDC = m_16.m_260.m_156;
+         if (Li_FFDC > 0) { 
+         Ld_FFE8 = ((Fa_d_02 / Fa_d_01) * m_16.m_260.m_172);
+         if (FuncArg_Boolean_00000000 == true) { 
+         Gi_0003 = Li_FFDC - 1;
+         Gd_0004 = ((Fa_d_02 / 0.01) * m_16.m_208[Gi_0003].m_34);
+         Ld_FFE8 = (m_16.m_260.m_156 * Gd_0004);
+         } 
+         Ld_FFE0 = m_16.m_260.m_164;
+         if ((Ld_FFE0 >= Ld_FFE8)) { 
+         tmp_str0000 = Fa_s_05;
+         tmp_str0001 = Fa_s_03;
+         Li_FFF0 = func_1085(tmp_str0001, Fa_i_04, 7, tmp_str0000, Fa_i_06, Fa_i_07, Fa_i_08);
+         if (Li_FFF0 > 0) { 
+         PrintFormat("多单总手数%f,单向盈利%f多单平仓", m_16.m_260.m_172, Ld_FFE0);
+         Li_FFF4 = Li_FFF4 + Li_FFF0;
+m_16.func_1046();
+         }}} 
+         Li_FFDC = m_24.m_260.m_156;
+         if (Li_FFDC > 0) { 
+         Ld_FFE8 = ((Fa_d_02 / Fa_d_01) * m_24.m_260.m_172);
+         if (FuncArg_Boolean_00000000 == true) { 
+         Gd_0008 = ((Fa_d_02 / 0.01) * m_24.m_208[0].m_34);
+         Ld_FFE8 = (m_24.m_260.m_156 * Gd_0008);
+         } 
+         Ld_FFE0 = m_24.m_260.m_164;
+         if (m_24.m_260.m_156 > 0 && (Ld_FFE0 >= Ld_FFE8)) { 
+         tmp_str0002 = Fa_s_05;
+         tmp_str0003 = Fa_s_03;
+         Li_FFF0 = func_1085(tmp_str0003, Fa_i_04, 9, tmp_str0002, Fa_i_06, Fa_i_07, Fa_i_08);
+         if (Li_FFF0 > 0) { 
+         PrintFormat("空单总手数%f,单向盈利%f空单平仓", m_24.m_260.m_172, Ld_FFE0);
+         Li_FFF4 = Li_FFF4 + Li_FFF0;
+m_24.func_1046();
+         }}} 
+m_32.func_1046();
+m_40.func_1046();
+         Li_FFF8 = Li_FFF4;
+         return Li_FFF4;
+      }
+
+};
+
+class CGlobalVariables
+{
+   public:
+      string m_16;
+      string m_28;
+      datetime m_40;
+};
+
+
+long Il_0160;
+long returned_l;
+long Gl_0000;
+int Ii_00F4;
+string Is_0150;
+int returned_i;
+int Gi_0000;
+CMain* Global_Pointer_00000000;
+string Gs_0001;
+double Gd_0002;
+int Gi_0003;
+string Is_00F8;
+int Gi_0004;
+int Gi_0006;
+bool returned_b;
+double Id_0068;
+int Ii_0070;
+bool Ib_0338;
+int Gi_0001;
+bool Ib_0000;
+bool Ib_0001;
+bool Ib_0002;
+string Is_0008;
+string Is_0018;
+long Il_0028;
+string Is_0030;
+string Is_0040;
+string Is_0050;
+int Ii_005C;
+int Ii_0060;
+int Ii_0074;
+double Id_0078;
+double Id_0080;
+double Id_0088;
+bool Ib_0090;
+int Ii_0094;
+int Ii_0098;
+int Ii_009C;
+int Ii_00A0;
+double Id_00A8;
+double Id_00B0;
+double Id_00B8;
+bool Ib_00C0;
+bool Ib_00C1;
+string Is_00C8;
+string Is_00D8;
+int Ii_00E4;
+int Ii_00E8;
+int Ii_00EC;
+int Ii_00F0;
+int Ii_0104;
+int Ii_0108;
+double Id_0110;
+double Id_0118;
+double Id_0120;
+double Id_0128;
+double Id_0130;
+double Id_0138;
+int Ii_0140;
+int Ii_0144;
+double Id_0148;
+int Ii_0168;
+string Is_0178;
+double Ind_000;
+int Gi_0002;
+bool Gb_0003;
+double Gd_0004;
+double Ind_002;
+string Gs_0000;
+int Gi_0005;
+int Gi_0007;
+int Gi_0008;
+bool Gb_0009;
+int Gi_000B;
+int Gi_000C;
+int Gi_000D;
+string Gs_000A;
+int Gi_000E;
+string Gs_000E;
+int Gi_000F;
+string Gs_000F;
+int Gi_0010;
+string Gs_0010;
+bool Gb_0011;
+int Gi_0012;
+bool Gb_0012;
+CPosition* Global_Pointer_00000004;
+string Gs_0005;
+string Gs_0007;
+struct Global_Struct_00000008;
+int Gi_0009;
+long Gl_000B;
+long Gl_000C;
+CPosition* Global_Pointer_00000010;
+string Gs_0011;
+string Gs_0013;
+struct Global_Struct_00000014;
+int Gi_0015;
+string Gs_0016;
+long Gl_0017;
+long Gl_0018;
+int Gi_0019;
+int Gi_001A;
+int Gi_001B;
+CPosition* Global_Pointer_0000001C;
+string Gs_001D;
+int Gi_001E;
+string Gs_001F;
+struct Global_Struct_00000020;
+int Gi_0021;
+string Gs_0022;
+long Gl_0023;
+long Gl_0024;
+int Gi_0025;
+int Gi_0026;
+int Gi_0027;
+CPosition* Global_Pointer_00000028;
+string Gs_0029;
+int Gi_002A;
+string Gs_002B;
+struct Global_Struct_0000002C;
+int Gi_002D;
+string Gs_002E;
+long Gl_002F;
+long Gl_0030;
+int Gi_0031;
+int Gi_0032;
+int Gi_0033;
+double Ind_004;
+bool Gb_0001;
+long Gl_0002;
+double Gd_000B;
+int Gi_000A;
+double Gd_0010;
+int Gi_0011;
+bool Gb_0013;
+double Gd_0012;
+int Gi_0013;
+double Gd_0013;
+double Gd_0014;
+bool Gb_0014;
+bool Gb_0016;
+double Gd_0015;
+int Gi_0016;
+double Gd_0016;
+double Gd_0017;
+bool Gb_0017;
+int Gi_0017;
+int Gi_0018;
+double Ind_003;
+int Gi_001C;
+int Gi_001D;
+int Gi_0020;
+int Gi_0022;
+int Gi_0023;
+int Gi_0024;
+double Gd_0024;
+bool Gb_0024;
+long Gl_0026;
+double Gd_0020;
+double Gd_001B;
+long Gl_0004;
+long Gl_0005;
+long Gl_0006;
+long Gl_0007;
+bool Gb_0004;
+double Gd_0005;
+double Gd_0007;
+double Gd_0008;
+bool Gb_0010;
+double Gd_0011;
+bool Gb_0015;
+double Gd_000A;
+bool Gb_0005;
+double Gd_0006;
+string Gs_0003;
+string Gs_0002;
+string Gs_0004;
+int Gi_00A6;
+bool Gb_00A7;
+bool Gb_00A8;
+bool Gb_00A9;
+bool Gb_00AA;
+bool Gb_00AB;
+bool Gb_00AC;
+int Gi_00A0;
+bool Gb_00A1;
+bool Gb_00A2;
+bool Gb_00A3;
+bool Gb_00A4;
+bool Gb_00A5;
+bool Gb_00A6;
+int Gi_0098;
+double Gd_0099;
+double Gd_009A;
+bool Gb_009B;
+bool Gb_009C;
+bool Gb_009D;
+bool Gb_009E;
+bool Gb_009F;
+bool Gb_00A0;
+int Gi_0090;
+double Gd_0091;
+double Gd_0092;
+bool Gb_0093;
+bool Gb_0094;
+bool Gb_0095;
+bool Gb_0096;
+bool Gb_0097;
+bool Gb_0098;
+int Gi_0088;
+double Gd_0089;
+double Gd_008A;
+bool Gb_008B;
+bool Gb_008C;
+bool Gb_008D;
+bool Gb_008E;
+bool Gb_008F;
+bool Gb_0090;
+int Gi_0080;
+double Gd_0081;
+double Gd_0082;
+bool Gb_0083;
+bool Gb_0084;
+bool Gb_0085;
+bool Gb_0086;
+bool Gb_0087;
+bool Gb_0088;
+int Gi_0078;
+double Gd_0079;
+double Gd_007A;
+bool Gb_007B;
+bool Gb_007C;
+bool Gb_007D;
+bool Gb_007E;
+bool Gb_007F;
+bool Gb_0080;
+int Gi_0070;
+double Gd_0071;
+double Gd_0072;
+bool Gb_0073;
+bool Gb_0074;
+bool Gb_0075;
+bool Gb_0076;
+bool Gb_0077;
+bool Gb_0078;
+int Gi_0068;
+double Gd_0069;
+double Gd_006A;
+bool Gb_006B;
+bool Gb_006C;
+bool Gb_006D;
+bool Gb_006E;
+bool Gb_006F;
+bool Gb_0070;
+int Gi_0060;
+double Gd_0061;
+double Gd_0062;
+bool Gb_0063;
+bool Gb_0064;
+bool Gb_0065;
+bool Gb_0066;
+bool Gb_0067;
+bool Gb_0068;
+int Gi_0058;
+double Gd_0059;
+double Gd_005A;
+bool Gb_005B;
+bool Gb_005C;
+bool Gb_005D;
+bool Gb_005E;
+bool Gb_005F;
+bool Gb_0060;
+int Gi_0050;
+bool Gb_0051;
+bool Gb_0052;
+bool Gb_0053;
+bool Gb_0054;
+bool Gb_0055;
+bool Gb_0056;
+bool Gb_0057;
+bool Gb_0058;
+int Gi_0048;
+bool Gb_0049;
+bool Gb_004A;
+bool Gb_004B;
+bool Gb_004C;
+bool Gb_004D;
+bool Gb_004E;
+bool Gb_004F;
+bool Gb_0050;
+int Gi_0040;
+int Gi_0041;
+int Gi_0042;
+bool Gb_0043;
+bool Gb_0044;
+bool Gb_0045;
+bool Gb_0046;
+bool Gb_0047;
+bool Gb_0048;
+int Gi_0038;
+int Gi_0039;
+int Gi_003A;
+bool Gb_003B;
+bool Gb_003C;
+bool Gb_003D;
+bool Gb_003E;
+bool Gb_003F;
+bool Gb_0040;
+int Gi_0030;
+bool Gb_0033;
+bool Gb_0034;
+bool Gb_0035;
+bool Gb_0036;
+bool Gb_0037;
+bool Gb_0038;
+int Gi_0028;
+int Gi_0029;
+bool Gb_002B;
+bool Gb_002C;
+bool Gb_002D;
+bool Gb_002E;
+bool Gb_002F;
+bool Gb_0030;
+long Gl_0021;
+long Gl_0022;
+bool Gb_0023;
+bool Gb_0025;
+bool Gb_0026;
+bool Gb_0027;
+bool Gb_0028;
+long Gl_0019;
+long Gl_001A;
+bool Gb_001B;
+bool Gb_001C;
+bool Gb_001D;
+bool Gb_001E;
+bool Gb_001F;
+bool Gb_0020;
+long Gl_0011;
+long Gl_0012;
+bool Gb_0018;
+bool Gb_000B;
+bool Gb_000C;
+bool Gb_000D;
+bool Gb_000E;
+bool Gb_000F;
+bool Gb_0006;
+bool Gb_0007;
+bool Gb_0008;
+bool Gb_0000;
+double Gd_0000;
+double Ind_001;
+double Gd_0003;
+double Gd_0001;
+long Gl_0003;
+long Gl_0009;
+long Gl_000A;
+short Gst_0001;
+short returned_st;
+long Gl_0001;
+int Return_Integer_00000007;
+double returned_double;
+CPosition Input_Pointer_00000178;
+CMain *Input_Pointer_00000170;
+CGlobalVariables Input_Pointer_00000340;
+
+int init()
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   string tmp_str0007;
+   string tmp_str0008;
+   int Li_FFFC;
+   
+   Ib_0000 = (ServerNameRestriction != "");  
+   Ib_0001 = EnableAccountCheck;             
+   Ib_0002 = EnableTimeLimit;               
+   Is_0008 = ServerNameRestriction;          
+   Is_0030 = ServerErrorMsg;                   // 服务器错误提示
+   Is_0040 = AccountErrorMsg;                  // 账号错误提示
+   Is_0050 = TimeExpiredMsg;                   // 时间到期提示
+   Ii_005C = LotDigits;                      // 手数小数位数
+   Ii_0060 = MaxSpread;                      // 最大点差
+   Id_0068 = MaxSpreadAmount;               // 最大点差金额
+   Ii_0070 = LotDigits;                      // 手数小数位数
+   Ii_0074 = MAPeriod;                      // MA周期
+   Id_0078 = MAStopLossPips;                // MA止损点数
+   Id_0080 = BaseLot;                       // 基础手数
+   Id_0088 = OpenLot;                       // 开仓手数
+   Ib_0090 = UseEquityStopLoss;              // 使用权益止损
+   Ii_0094 = EquityStopLossPercent;          // 权益止损百分比
+   Ii_0098 = MaxHoldTime;                    // 最大持仓时间
+   Ii_009C = MaxPositions;                    // 最大持仓数量
+   Ii_00A0 = AddPositionInterval;            // 加仓间隔
+   Id_00A8 = LotMultiplier;                  // 手数倍数
+   Id_00B0 = CloseProfitDivisor;             // 平仓盈利除数
+   Id_00B8 = CloseProfitMultiplier;          // 平仓盈利倍数
+   Ib_00C0 = EnableTimeControl;              // 启用时间控制
+   Ib_00C1 = EnableNewsFilter;                // 启用新闻过滤
+   Is_00C8 = StartTime;                      // 开始时间
+   Is_00D8 = EndTime;                        // 结束时间
+   Ii_00E4 = MaxAddPositions;                // 最大加仓次数
+   Ii_00E8 = 0;
+   Ii_00EC = 0;
+   Ii_00F0 = 0;
+   Ii_00F4 = MagicNumber;                     // 魔术号
+   Is_00F8 = ServerErrorMsg;                  //注释
+   Ii_0104 = 0;
+   Ii_0108 = 0;
+   Id_0110 = 0;
+   Id_0118 = 0;
+   Id_0120 = 0;
+   Id_0128 = 0;
+   Id_0130 = 0;
+   Id_0138 = 0;
+   Ii_0140 = 0;
+   Ii_0144 = 0;
+   Id_0148 = 0;
+   Il_0160 = 0;
+   Ii_0168 = 0;
+   Input_Pointer_00000170 = NULL;
+   Ib_0338 = false;
+   tmp_str0000 = _Symbol + "_";
+   tmp_str0000 = tmp_str0000 + IntegerToString(MagicNumber, 0, 32);
+   tmp_str0000 = tmp_str0000 + "_";
+   Input_Pointer_00000340.m_16 = tmp_str0000;
+   if (MQLInfoInteger(6) != 0) { 
+   Input_Pointer_00000340.m_16 = "t_" + tmp_str0000;
+   } 
+   Input_Pointer_00000340.m_16 = "TK_" + Input_Pointer_00000340.m_16;
+   
+   tmp_str0000 = _Symbol;
+   Il_0160 = TimeCurrent();
+   tmp_str0001 = tmp_str0000 + "_";
+   tmp_str0001 = tmp_str0001 + IntegerToString(Ii_00F4, 0, 32);
+   tmp_str0001 = tmp_str0001 + "_";
+   Is_0150 = tmp_str0001;
+   if (MQLInfoInteger(6) != 0) { 
+   Is_0150 = "t_" + tmp_str0001;
+   } 
+   Global_Pointer_00000000 = Input_Pointer_00000170;
+   Gi_0000 = CheckPointer(Global_Pointer_00000000);
+   if (Gi_0000 == 0 || Input_Pointer_00000170 == NULL) { 
+   
+   Input_Pointer_00000170 = new CMain();
+   tmp_str0001 = Is_00F8;
+   tmp_str0002 = _Symbol;
+   tmp_str0003 = tmp_str0001;
+   tmp_str0004 = tmp_str0002;
+   Input_Pointer_00000170.func_1053(tmp_str0004, Ii_00F4, tmp_str0003, _Period);
+
+   } 
+   else { 
+   tmp_str0005 = Is_00F8;
+   tmp_str0006 = _Symbol;
+   Input_Pointer_00000170.func_1053(tmp_str0006, Ii_00F4, tmp_str0005, _Period);
+   } 
+   tmp_str0007 = Is_00F8;
+   tmp_str0008 = NULL;
+   Input_Pointer_00000178.func_1039(22, 10, tmp_str0008, -1, tmp_str0007, 0, 32527353599);
+   Gi_0006 = IsTradeAllowed();
+   if (Gi_0006 != 0) return 0; 
+   Alert("Please choose to allow Expert Advisors");
+   
+   Li_FFFC = 0;
+   return 0;
+}
+
+void OnTick()
+{
+   string tmp_str0000;
+
+   if (!func_1098()) return; 
+   tmp_str0000 = _Symbol;
+   func_1096(tmp_str0000, 0, Ii_0070, Id_0068);
+   if (Ib_0338 == true) return; 
+   Input_Pointer_00000170.func_1054();
+   
+}
+
+void OnDeinit(const int reason)
+{
+   ObjectsDeleteAll(0, Is_0150, -1, -1);
+   if (_UninitReason == 5) return; 
+   if (_UninitReason == 3) return; 
+   Gi_0001 = CheckPointer(Input_Pointer_00000170);
+   if (Gi_0001 == 1) { 
+   ArrayFree(Input_Pointer_00000170.m_115);
+   } 
+   delete Input_Pointer_00000170;
+   
+}
+
+bool func_1071(int Fa_i_00, int Fa_i_01)
+{
+   bool Lb_FFFF;
+
+   if (Fa_i_01 == 13) { 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 == 0) { 
+   if (Fa_i_01 != 0 && Fa_i_01 != 7 && Fa_i_01 != 11) { 
+   if (Fa_i_01 != 10) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 == 1) { 
+   if (Fa_i_01 != 1 && Fa_i_01 != 9 && Fa_i_01 != 11) { 
+   if (Fa_i_01 != 10) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 == 2) { 
+   if (Fa_i_01 != 6 && Fa_i_01 != 7 && Fa_i_01 != 12 && Fa_i_01 != 10) { 
+   if (Fa_i_01 != 2) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 == 4) { 
+   if (Fa_i_01 != 6 && Fa_i_01 != 7 && Fa_i_01 != 12 && Fa_i_01 != 10) { 
+   if (Fa_i_01 != 3) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 == 3) { 
+   if (Fa_i_01 != 8 && Fa_i_01 != 9 && Fa_i_01 != 12 && Fa_i_01 != 10) { 
+   if (Fa_i_01 != 4) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   } 
+   if (Fa_i_00 != 5) return false; 
+   if (Fa_i_01 != 8 && Fa_i_01 != 9 && Fa_i_01 != 12 && Fa_i_01 != 10) { 
+   if (Fa_i_01 != 5) return false; 
+   } 
+   Lb_FFFF = true;
+   return Lb_FFFF;
+   
+   Lb_FFFF = false;
+   
+   return Lb_FFFF;
+}
+
+void func_1073(int Fa_i_00, OrderData &FuncArg_Struct_00000001[], OrderData &FuncArg_Struct_00000002, int Fa_i_03)
+{
+   bool Lb_FFFF;
+   int Li_FFF8;
+   int Li_FFF4;
+
+   if (Fa_i_00 == 22) { 
+   FuncArg_Struct_00000001[Fa_i_03].m_0 = FuncArg_Struct_00000002.m_0;
+   FuncArg_Struct_00000001[Fa_i_03].m_4 = FuncArg_Struct_00000002.m_4;
+   FuncArg_Struct_00000001[Fa_i_03].m_8 = FuncArg_Struct_00000002.m_8;
+   FuncArg_Struct_00000001[Fa_i_03].m_12 = FuncArg_Struct_00000002.m_12;
+   FuncArg_Struct_00000001[Fa_i_03].m_16 = FuncArg_Struct_00000002.m_16;
+   FuncArg_Struct_00000001[Fa_i_03].m_20 = FuncArg_Struct_00000002.m_20;
+   FuncArg_Struct_00000001[Fa_i_03].m_24 = FuncArg_Struct_00000002.m_24;
+   FuncArg_Struct_00000001[Fa_i_03].m_25 = FuncArg_Struct_00000002.m_25;
+   FuncArg_Struct_00000001[Fa_i_03].m_26 = FuncArg_Struct_00000002.m_26;
+   FuncArg_Struct_00000001[Fa_i_03].m_34 = FuncArg_Struct_00000002.m_34;
+   FuncArg_Struct_00000001[Fa_i_03].m_42 = FuncArg_Struct_00000002.m_42;
+   FuncArg_Struct_00000001[Fa_i_03].m_50 = FuncArg_Struct_00000002.m_50;
+   FuncArg_Struct_00000001[Fa_i_03].m_58 = FuncArg_Struct_00000002.m_58;
+   FuncArg_Struct_00000001[Fa_i_03].m_66 = FuncArg_Struct_00000002.m_66;
+   FuncArg_Struct_00000001[Fa_i_03].m_74 = FuncArg_Struct_00000002.m_74;
+   FuncArg_Struct_00000001[Fa_i_03].m_82 = FuncArg_Struct_00000002.m_82;
+   FuncArg_Struct_00000001[Fa_i_03].m_90 = FuncArg_Struct_00000002.m_90;
+   FuncArg_Struct_00000001[Fa_i_03].m_98 = FuncArg_Struct_00000002.m_98;
+   FuncArg_Struct_00000001[Fa_i_03].m_106 = FuncArg_Struct_00000002.m_106;
+   FuncArg_Struct_00000001[Fa_i_03].m_114 = FuncArg_Struct_00000002.m_114;
+   FuncArg_Struct_00000001[Fa_i_03].m_122 = FuncArg_Struct_00000002.m_122;
+   FuncArg_Struct_00000001[Fa_i_03].m_130 = FuncArg_Struct_00000002.m_130;
+   FuncArg_Struct_00000001[Fa_i_03].m_142 = FuncArg_Struct_00000002.m_142;
+   return ;
+   } 
+   Lb_FFFF = false;
+   Li_FFF8 = 0;
+   if (Fa_i_03 > 0) { 
+   do { 
+   if (func_1074(Fa_i_00, FuncArg_Struct_00000002, FuncArg_Struct_00000001[Li_FFF8], 2) == true) { 
+   Li_FFF4 = Fa_i_03;
+   if (Fa_i_03 > Li_FFF8) { 
+   do { 
+   Gi_0002 = Li_FFF4 - 1;
+   FuncArg_Struct_00000001[Li_FFF4].m_0 = FuncArg_Struct_00000001[Gi_0002].m_0;
+   FuncArg_Struct_00000001[Li_FFF4].m_4 = FuncArg_Struct_00000001[Gi_0002].m_4;
+   FuncArg_Struct_00000001[Li_FFF4].m_8 = FuncArg_Struct_00000001[Gi_0002].m_8;
+   FuncArg_Struct_00000001[Li_FFF4].m_12 = FuncArg_Struct_00000001[Gi_0002].m_12;
+   FuncArg_Struct_00000001[Li_FFF4].m_16 = FuncArg_Struct_00000001[Gi_0002].m_16;
+   FuncArg_Struct_00000001[Li_FFF4].m_20 = FuncArg_Struct_00000001[Gi_0002].m_20;
+   FuncArg_Struct_00000001[Li_FFF4].m_24 = FuncArg_Struct_00000001[Gi_0002].m_24;
+   FuncArg_Struct_00000001[Li_FFF4].m_25 = FuncArg_Struct_00000001[Gi_0002].m_25;
+   FuncArg_Struct_00000001[Li_FFF4].m_26 = FuncArg_Struct_00000001[Gi_0002].m_26;
+   FuncArg_Struct_00000001[Li_FFF4].m_34 = FuncArg_Struct_00000001[Gi_0002].m_34;
+   FuncArg_Struct_00000001[Li_FFF4].m_42 = FuncArg_Struct_00000001[Gi_0002].m_42;
+   FuncArg_Struct_00000001[Li_FFF4].m_50 = FuncArg_Struct_00000001[Gi_0002].m_50;
+   FuncArg_Struct_00000001[Li_FFF4].m_58 = FuncArg_Struct_00000001[Gi_0002].m_58;
+   FuncArg_Struct_00000001[Li_FFF4].m_66 = FuncArg_Struct_00000001[Gi_0002].m_66;
+   FuncArg_Struct_00000001[Li_FFF4].m_74 = FuncArg_Struct_00000001[Gi_0002].m_74;
+   FuncArg_Struct_00000001[Li_FFF4].m_82 = FuncArg_Struct_00000001[Gi_0002].m_82;
+   FuncArg_Struct_00000001[Li_FFF4].m_90 = FuncArg_Struct_00000001[Gi_0002].m_90;
+   FuncArg_Struct_00000001[Li_FFF4].m_98 = FuncArg_Struct_00000001[Gi_0002].m_98;
+   FuncArg_Struct_00000001[Li_FFF4].m_106 = FuncArg_Struct_00000001[Gi_0002].m_106;
+   FuncArg_Struct_00000001[Li_FFF4].m_114 = FuncArg_Struct_00000001[Gi_0002].m_114;
+   FuncArg_Struct_00000001[Li_FFF4].m_122 = FuncArg_Struct_00000001[Gi_0002].m_122;
+   FuncArg_Struct_00000001[Li_FFF4].m_130 = FuncArg_Struct_00000001[Gi_0002].m_130;
+   FuncArg_Struct_00000001[Li_FFF4].m_142 = FuncArg_Struct_00000001[Gi_0002].m_142;
+   Li_FFF4 = Li_FFF4 - 1;
+   } while (Li_FFF4 > Li_FFF8); 
+   } 
+   FuncArg_Struct_00000001[Li_FFF8].m_0 = FuncArg_Struct_00000002.m_0;
+   FuncArg_Struct_00000001[Li_FFF8].m_4 = FuncArg_Struct_00000002.m_4;
+   FuncArg_Struct_00000001[Li_FFF8].m_8 = FuncArg_Struct_00000002.m_8;
+   FuncArg_Struct_00000001[Li_FFF8].m_12 = FuncArg_Struct_00000002.m_12;
+   FuncArg_Struct_00000001[Li_FFF8].m_16 = FuncArg_Struct_00000002.m_16;
+   FuncArg_Struct_00000001[Li_FFF8].m_20 = FuncArg_Struct_00000002.m_20;
+   FuncArg_Struct_00000001[Li_FFF8].m_24 = FuncArg_Struct_00000002.m_24;
+   FuncArg_Struct_00000001[Li_FFF8].m_25 = FuncArg_Struct_00000002.m_25;
+   FuncArg_Struct_00000001[Li_FFF8].m_26 = FuncArg_Struct_00000002.m_26;
+   FuncArg_Struct_00000001[Li_FFF8].m_34 = FuncArg_Struct_00000002.m_34;
+   FuncArg_Struct_00000001[Li_FFF8].m_42 = FuncArg_Struct_00000002.m_42;
+   FuncArg_Struct_00000001[Li_FFF8].m_50 = FuncArg_Struct_00000002.m_50;
+   FuncArg_Struct_00000001[Li_FFF8].m_58 = FuncArg_Struct_00000002.m_58;
+   FuncArg_Struct_00000001[Li_FFF8].m_66 = FuncArg_Struct_00000002.m_66;
+   FuncArg_Struct_00000001[Li_FFF8].m_74 = FuncArg_Struct_00000002.m_74;
+   FuncArg_Struct_00000001[Li_FFF8].m_82 = FuncArg_Struct_00000002.m_82;
+   FuncArg_Struct_00000001[Li_FFF8].m_90 = FuncArg_Struct_00000002.m_90;
+   FuncArg_Struct_00000001[Li_FFF8].m_98 = FuncArg_Struct_00000002.m_98;
+   FuncArg_Struct_00000001[Li_FFF8].m_106 = FuncArg_Struct_00000002.m_106;
+   FuncArg_Struct_00000001[Li_FFF8].m_114 = FuncArg_Struct_00000002.m_114;
+   FuncArg_Struct_00000001[Li_FFF8].m_122 = FuncArg_Struct_00000002.m_122;
+   FuncArg_Struct_00000001[Li_FFF8].m_130 = FuncArg_Struct_00000002.m_130;
+   FuncArg_Struct_00000001[Li_FFF8].m_142 = FuncArg_Struct_00000002.m_142;
+   Lb_FFFF = true;
+   break; 
+   } 
+   Li_FFF8 = Li_FFF8 + 1;
+   } while (Li_FFF8 < Fa_i_03); 
+   } 
+   if (Lb_FFFF != 0) return; 
+   FuncArg_Struct_00000001[Fa_i_03].m_0 = FuncArg_Struct_00000002.m_0;
+   FuncArg_Struct_00000001[Fa_i_03].m_4 = FuncArg_Struct_00000002.m_4;
+   FuncArg_Struct_00000001[Fa_i_03].m_8 = FuncArg_Struct_00000002.m_8;
+   FuncArg_Struct_00000001[Fa_i_03].m_12 = FuncArg_Struct_00000002.m_12;
+   FuncArg_Struct_00000001[Fa_i_03].m_16 = FuncArg_Struct_00000002.m_16;
+   FuncArg_Struct_00000001[Fa_i_03].m_20 = FuncArg_Struct_00000002.m_20;
+   FuncArg_Struct_00000001[Fa_i_03].m_24 = FuncArg_Struct_00000002.m_24;
+   FuncArg_Struct_00000001[Fa_i_03].m_25 = FuncArg_Struct_00000002.m_25;
+   FuncArg_Struct_00000001[Fa_i_03].m_26 = FuncArg_Struct_00000002.m_26;
+   FuncArg_Struct_00000001[Fa_i_03].m_34 = FuncArg_Struct_00000002.m_34;
+   FuncArg_Struct_00000001[Fa_i_03].m_42 = FuncArg_Struct_00000002.m_42;
+   FuncArg_Struct_00000001[Fa_i_03].m_50 = FuncArg_Struct_00000002.m_50;
+   FuncArg_Struct_00000001[Fa_i_03].m_58 = FuncArg_Struct_00000002.m_58;
+   FuncArg_Struct_00000001[Fa_i_03].m_66 = FuncArg_Struct_00000002.m_66;
+   FuncArg_Struct_00000001[Fa_i_03].m_74 = FuncArg_Struct_00000002.m_74;
+   FuncArg_Struct_00000001[Fa_i_03].m_82 = FuncArg_Struct_00000002.m_82;
+   FuncArg_Struct_00000001[Fa_i_03].m_90 = FuncArg_Struct_00000002.m_90;
+   FuncArg_Struct_00000001[Fa_i_03].m_98 = FuncArg_Struct_00000002.m_98;
+   FuncArg_Struct_00000001[Fa_i_03].m_106 = FuncArg_Struct_00000002.m_106;
+   FuncArg_Struct_00000001[Fa_i_03].m_114 = FuncArg_Struct_00000002.m_114;
+   FuncArg_Struct_00000001[Fa_i_03].m_122 = FuncArg_Struct_00000002.m_122;
+   FuncArg_Struct_00000001[Fa_i_03].m_130 = FuncArg_Struct_00000002.m_130;
+   FuncArg_Struct_00000001[Fa_i_03].m_142 = FuncArg_Struct_00000002.m_142;
+   
+}
+
+bool func_1074(int Fa_i_00, OrderData &FuncArg_Struct_00000001, OrderData &FuncArg_Struct_00000002, int Fa_i_03)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   bool Lb_FFFF;
+
+   returned_i = Fa_i_00;
+   if (returned_i > 21) return false; 
+   if (returned_i == 0){
+   
+   Gi_0000 = Fa_i_03;
+   Gi_0001 = FuncArg_Struct_00000002.m_0;
+   Gi_0002 = FuncArg_Struct_00000001.m_0;
+   Gb_0003 = (Fa_i_03 == 0);
+   if (Gb_0003) { 
+   Gb_0003 = (Gi_0002 == Gi_0001);
+   } 
+   if (Gb_0003) { 
+   Gb_0003 = true;
+   } 
+   else { 
+   Gb_0004 = (Gi_0000 == 3);
+   if (Gb_0004) { 
+   Gb_0004 = (Gi_0002 != Gi_0001);
+   } 
+   if (Gb_0004) { 
+   Gb_0004 = true;
+   } 
+   else { 
+   Gb_0005 = (Gi_0000 == 1);
+   if (Gb_0005) { 
+   Gb_0005 = (Gi_0002 > Gi_0001);
+   } 
+   if (Gb_0005) { 
+   Gb_0005 = true;
+   } 
+   else { 
+   Gb_0006 = (Gi_0000 == 2);
+   if (Gb_0006) { 
+   Gb_0006 = (Gi_0002 < Gi_0001);
+   } 
+   if (Gb_0006) { 
+   Gb_0006 = true;
+   } 
+   else { 
+   Gb_0007 = (Gi_0000 == 4);
+   if (Gb_0007) { 
+   Gb_0007 = (Gi_0002 >= Gi_0001);
+   } 
+   if (Gb_0007) { 
+   Gb_0007 = true;
+   } 
+   else { 
+   Gb_0008 = (Gi_0000 == 5);
+   if (Gb_0008) { 
+   Gb_0008 = (Gi_0002 <= Gi_0001);
+   } 
+   if (Gb_0008) { 
+   Gb_0008 = true;
+   } 
+   else { 
+   Gb_0008 = false;
+   } 
+   Gb_0007 = Gb_0008;
+   } 
+   Gb_0006 = Gb_0007;
+   } 
+   Gb_0005 = Gb_0006;
+   } 
+   Gb_0004 = Gb_0005;
+   } 
+   Gb_0003 = Gb_0004;
+   } 
+   Lb_FFFF = Gb_0003;
+   return Lb_FFFF;
+   }
+   if (returned_i == 1){
+   
+   Gi_0008 = Fa_i_03;
+   Gi_0009 = FuncArg_Struct_00000002.m_4;
+   Gi_000A = FuncArg_Struct_00000001.m_4;
+   Gb_000B = (Fa_i_03 == 0);
+   if (Gb_000B) { 
+   Gb_000B = (Gi_000A == Gi_0009);
+   } 
+   if (Gb_000B) { 
+   Gb_000B = true;
+   } 
+   else { 
+   Gb_000C = (Gi_0008 == 3);
+   if (Gb_000C) { 
+   Gb_000C = (Gi_000A != Gi_0009);
+   } 
+   if (Gb_000C) { 
+   Gb_000C = true;
+   } 
+   else { 
+   Gb_000D = (Gi_0008 == 1);
+   if (Gb_000D) { 
+   Gb_000D = (Gi_000A > Gi_0009);
+   } 
+   if (Gb_000D) { 
+   Gb_000D = true;
+   } 
+   else { 
+   Gb_000E = (Gi_0008 == 2);
+   if (Gb_000E) { 
+   Gb_000E = (Gi_000A < Gi_0009);
+   } 
+   if (Gb_000E) { 
+   Gb_000E = true;
+   } 
+   else { 
+   Gb_000F = (Gi_0008 == 4);
+   if (Gb_000F) { 
+   Gb_000F = (Gi_000A >= Gi_0009);
+   } 
+   if (Gb_000F) { 
+   Gb_000F = true;
+   } 
+   else { 
+   Gb_0010 = (Gi_0008 == 5);
+   if (Gb_0010) { 
+   Gb_0010 = (Gi_000A <= Gi_0009);
+   } 
+   if (Gb_0010) { 
+   Gb_0010 = true;
+   } 
+   else { 
+   Gb_0010 = false;
+   } 
+   Gb_000F = Gb_0010;
+   } 
+   Gb_000E = Gb_000F;
+   } 
+   Gb_000D = Gb_000E;
+   } 
+   Gb_000C = Gb_000D;
+   } 
+   Gb_000B = Gb_000C;
+   } 
+   Lb_FFFF = Gb_000B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 2){
+   
+   Gi_0010 = Fa_i_03;
+   Gl_0011 = FuncArg_Struct_00000002.m_106;
+   Gl_0012 = FuncArg_Struct_00000001.m_106;
+   Gb_0013 = (Fa_i_03 == 0);
+   if (Gb_0013) { 
+   Gb_0013 = (Gl_0012 == Gl_0011);
+   } 
+   if (Gb_0013) { 
+   Gb_0013 = true;
+   } 
+   else { 
+   Gb_0014 = (Gi_0010 == 3);
+   if (Gb_0014) { 
+   Gb_0014 = (Gl_0012 != Gl_0011);
+   } 
+   if (Gb_0014) { 
+   Gb_0014 = true;
+   } 
+   else { 
+   Gb_0015 = (Gi_0010 == 1);
+   if (Gb_0015) { 
+   Gb_0015 = (Gl_0012 > Gl_0011);
+   } 
+   if (Gb_0015) { 
+   Gb_0015 = true;
+   } 
+   else { 
+   Gb_0016 = (Gi_0010 == 2);
+   if (Gb_0016) { 
+   Gb_0016 = (Gl_0012 < Gl_0011);
+   } 
+   if (Gb_0016) { 
+   Gb_0016 = true;
+   } 
+   else { 
+   Gb_0017 = (Gi_0010 == 4);
+   if (Gb_0017) { 
+   Gb_0017 = (Gl_0012 >= Gl_0011);
+   } 
+   if (Gb_0017) { 
+   Gb_0017 = true;
+   } 
+   else { 
+   Gb_0018 = (Gi_0010 == 5);
+   if (Gb_0018) { 
+   Gb_0018 = (Gl_0012 <= Gl_0011);
+   } 
+   if (Gb_0018) { 
+   Gb_0018 = true;
+   } 
+   else { 
+   Gb_0018 = false;
+   } 
+   Gb_0017 = Gb_0018;
+   } 
+   Gb_0016 = Gb_0017;
+   } 
+   Gb_0015 = Gb_0016;
+   } 
+   Gb_0014 = Gb_0015;
+   } 
+   Gb_0013 = Gb_0014;
+   } 
+   Lb_FFFF = Gb_0013;
+   return Lb_FFFF;
+   }
+   if (returned_i == 3){
+   
+   Gi_0018 = Fa_i_03;
+   Gl_0019 = FuncArg_Struct_00000002.m_114;
+   Gl_001A = FuncArg_Struct_00000001.m_114;
+   Gb_001B = (Fa_i_03 == 0);
+   if (Gb_001B) { 
+   Gb_001B = (Gl_001A == Gl_0019);
+   } 
+   if (Gb_001B) { 
+   Gb_001B = true;
+   } 
+   else { 
+   Gb_001C = (Gi_0018 == 3);
+   if (Gb_001C) { 
+   Gb_001C = (Gl_001A != Gl_0019);
+   } 
+   if (Gb_001C) { 
+   Gb_001C = true;
+   } 
+   else { 
+   Gb_001D = (Gi_0018 == 1);
+   if (Gb_001D) { 
+   Gb_001D = (Gl_001A > Gl_0019);
+   } 
+   if (Gb_001D) { 
+   Gb_001D = true;
+   } 
+   else { 
+   Gb_001E = (Gi_0018 == 2);
+   if (Gb_001E) { 
+   Gb_001E = (Gl_001A < Gl_0019);
+   } 
+   if (Gb_001E) { 
+   Gb_001E = true;
+   } 
+   else { 
+   Gb_001F = (Gi_0018 == 4);
+   if (Gb_001F) { 
+   Gb_001F = (Gl_001A >= Gl_0019);
+   } 
+   if (Gb_001F) { 
+   Gb_001F = true;
+   } 
+   else { 
+   Gb_0020 = (Gi_0018 == 5);
+   if (Gb_0020) { 
+   Gb_0020 = (Gl_001A <= Gl_0019);
+   } 
+   if (Gb_0020) { 
+   Gb_0020 = true;
+   } 
+   else { 
+   Gb_0020 = false;
+   } 
+   Gb_001F = Gb_0020;
+   } 
+   Gb_001E = Gb_001F;
+   } 
+   Gb_001D = Gb_001E;
+   } 
+   Gb_001C = Gb_001D;
+   } 
+   Gb_001B = Gb_001C;
+   } 
+   Lb_FFFF = Gb_001B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 4){
+   
+   Gi_0020 = Fa_i_03;
+   Gl_0021 = FuncArg_Struct_00000002.m_122;
+   Gl_0022 = FuncArg_Struct_00000001.m_122;
+   Gb_0023 = (Fa_i_03 == 0);
+   if (Gb_0023) { 
+   Gb_0023 = (Gl_0022 == Gl_0021);
+   } 
+   if (Gb_0023) { 
+   Gb_0023 = true;
+   } 
+   else { 
+   Gb_0024 = (Gi_0020 == 3);
+   if (Gb_0024) { 
+   Gb_0024 = (Gl_0022 != Gl_0021);
+   } 
+   if (Gb_0024) { 
+   Gb_0024 = true;
+   } 
+   else { 
+   Gb_0025 = (Gi_0020 == 1);
+   if (Gb_0025) { 
+   Gb_0025 = (Gl_0022 > Gl_0021);
+   } 
+   if (Gb_0025) { 
+   Gb_0025 = true;
+   } 
+   else { 
+   Gb_0026 = (Gi_0020 == 2);
+   if (Gb_0026) { 
+   Gb_0026 = (Gl_0022 < Gl_0021);
+   } 
+   if (Gb_0026) { 
+   Gb_0026 = true;
+   } 
+   else { 
+   Gb_0027 = (Gi_0020 == 4);
+   if (Gb_0027) { 
+   Gb_0027 = (Gl_0022 >= Gl_0021);
+   } 
+   if (Gb_0027) { 
+   Gb_0027 = true;
+   } 
+   else { 
+   Gb_0028 = (Gi_0020 == 5);
+   if (Gb_0028) { 
+   Gb_0028 = (Gl_0022 <= Gl_0021);
+   } 
+   if (Gb_0028) { 
+   Gb_0028 = true;
+   } 
+   else { 
+   Gb_0028 = false;
+   } 
+   Gb_0027 = Gb_0028;
+   } 
+   Gb_0026 = Gb_0027;
+   } 
+   Gb_0025 = Gb_0026;
+   } 
+   Gb_0024 = Gb_0025;
+   } 
+   Gb_0023 = Gb_0024;
+   } 
+   Lb_FFFF = Gb_0023;
+   return Lb_FFFF;
+   }
+   if (returned_i == 5){
+   
+   Gi_0028 = Fa_i_03;
+   Gi_0029 = FuncArg_Struct_00000002.m_8;
+   Gi_002A = FuncArg_Struct_00000001.m_8;
+   Gb_002B = (Fa_i_03 == 0);
+   if (Gb_002B) { 
+   Gb_002B = (Gi_002A == Gi_0029);
+   } 
+   if (Gb_002B) { 
+   Gb_002B = true;
+   } 
+   else { 
+   Gb_002C = (Gi_0028 == 3);
+   if (Gb_002C) { 
+   Gb_002C = (Gi_002A != Gi_0029);
+   } 
+   if (Gb_002C) { 
+   Gb_002C = true;
+   } 
+   else { 
+   Gb_002D = (Gi_0028 == 1);
+   if (Gb_002D) { 
+   Gb_002D = (Gi_002A > Gi_0029);
+   } 
+   if (Gb_002D) { 
+   Gb_002D = true;
+   } 
+   else { 
+   Gb_002E = (Gi_0028 == 2);
+   if (Gb_002E) { 
+   Gb_002E = (Gi_002A < Gi_0029);
+   } 
+   if (Gb_002E) { 
+   Gb_002E = true;
+   } 
+   else { 
+   Gb_002F = (Gi_0028 == 4);
+   if (Gb_002F) { 
+   Gb_002F = (Gi_002A >= Gi_0029);
+   } 
+   if (Gb_002F) { 
+   Gb_002F = true;
+   } 
+   else { 
+   Gb_0030 = (Gi_0028 == 5);
+   if (Gb_0030) { 
+   Gb_0030 = (Gi_002A <= Gi_0029);
+   } 
+   if (Gb_0030) { 
+   Gb_0030 = true;
+   } 
+   else { 
+   Gb_0030 = false;
+   } 
+   Gb_002F = Gb_0030;
+   } 
+   Gb_002E = Gb_002F;
+   } 
+   Gb_002D = Gb_002E;
+   } 
+   Gb_002C = Gb_002D;
+   } 
+   Gb_002B = Gb_002C;
+   } 
+   Lb_FFFF = Gb_002B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 6){
+   
+   Gi_0030 = Fa_i_03;
+   Gi_0031 = FuncArg_Struct_00000002.m_12;
+   Gi_0032 = FuncArg_Struct_00000001.m_12;
+   Gb_0033 = (Fa_i_03 == 0);
+   if (Gb_0033) { 
+   Gb_0033 = (Gi_0032 == Gi_0031);
+   } 
+   if (Gb_0033) { 
+   Gb_0033 = true;
+   } 
+   else { 
+   Gb_0034 = (Gi_0030 == 3);
+   if (Gb_0034) { 
+   Gb_0034 = (Gi_0032 != Gi_0031);
+   } 
+   if (Gb_0034) { 
+   Gb_0034 = true;
+   } 
+   else { 
+   Gb_0035 = (Gi_0030 == 1);
+   if (Gb_0035) { 
+   Gb_0035 = (Gi_0032 > Gi_0031);
+   } 
+   if (Gb_0035) { 
+   Gb_0035 = true;
+   } 
+   else { 
+   Gb_0036 = (Gi_0030 == 2);
+   if (Gb_0036) { 
+   Gb_0036 = (Gi_0032 < Gi_0031);
+   } 
+   if (Gb_0036) { 
+   Gb_0036 = true;
+   } 
+   else { 
+   Gb_0037 = (Gi_0030 == 4);
+   if (Gb_0037) { 
+   Gb_0037 = (Gi_0032 >= Gi_0031);
+   } 
+   if (Gb_0037) { 
+   Gb_0037 = true;
+   } 
+   else { 
+   Gb_0038 = (Gi_0030 == 5);
+   if (Gb_0038) { 
+   Gb_0038 = (Gi_0032 <= Gi_0031);
+   } 
+   if (Gb_0038) { 
+   Gb_0038 = true;
+   } 
+   else { 
+   Gb_0038 = false;
+   } 
+   Gb_0037 = Gb_0038;
+   } 
+   Gb_0036 = Gb_0037;
+   } 
+   Gb_0035 = Gb_0036;
+   } 
+   Gb_0034 = Gb_0035;
+   } 
+   Gb_0033 = Gb_0034;
+   } 
+   Lb_FFFF = Gb_0033;
+   return Lb_FFFF;
+   }
+   if (returned_i == 7){
+   
+   Gi_0038 = Fa_i_03;
+   Gi_0039 = FuncArg_Struct_00000002.m_16;
+   Gi_003A = FuncArg_Struct_00000001.m_16;
+   Gb_003B = (Fa_i_03 == 0);
+   if (Gb_003B) { 
+   Gb_003B = (Gi_003A == Gi_0039);
+   } 
+   if (Gb_003B) { 
+   Gb_003B = true;
+   } 
+   else { 
+   Gb_003C = (Gi_0038 == 3);
+   if (Gb_003C) { 
+   Gb_003C = (Gi_003A != Gi_0039);
+   } 
+   if (Gb_003C) { 
+   Gb_003C = true;
+   } 
+   else { 
+   Gb_003D = (Gi_0038 == 1);
+   if (Gb_003D) { 
+   Gb_003D = (Gi_003A > Gi_0039);
+   } 
+   if (Gb_003D) { 
+   Gb_003D = true;
+   } 
+   else { 
+   Gb_003E = (Gi_0038 == 2);
+   if (Gb_003E) { 
+   Gb_003E = (Gi_003A < Gi_0039);
+   } 
+   if (Gb_003E) { 
+   Gb_003E = true;
+   } 
+   else { 
+   Gb_003F = (Gi_0038 == 4);
+   if (Gb_003F) { 
+   Gb_003F = (Gi_003A >= Gi_0039);
+   } 
+   if (Gb_003F) { 
+   Gb_003F = true;
+   } 
+   else { 
+   Gb_0040 = (Gi_0038 == 5);
+   if (Gb_0040) { 
+   Gb_0040 = (Gi_003A <= Gi_0039);
+   } 
+   if (Gb_0040) { 
+   Gb_0040 = true;
+   } 
+   else { 
+   Gb_0040 = false;
+   } 
+   Gb_003F = Gb_0040;
+   } 
+   Gb_003E = Gb_003F;
+   } 
+   Gb_003D = Gb_003E;
+   } 
+   Gb_003C = Gb_003D;
+   } 
+   Gb_003B = Gb_003C;
+   } 
+   Lb_FFFF = Gb_003B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 8){
+   
+   Gi_0040 = Fa_i_03;
+   Gi_0041 = FuncArg_Struct_00000002.m_20;
+   Gi_0042 = FuncArg_Struct_00000001.m_20;
+   Gb_0043 = (Fa_i_03 == 0);
+   if (Gb_0043) { 
+   Gb_0043 = (Gi_0042 == Gi_0041);
+   } 
+   if (Gb_0043) { 
+   Gb_0043 = true;
+   } 
+   else { 
+   Gb_0044 = (Gi_0040 == 3);
+   if (Gb_0044) { 
+   Gb_0044 = (Gi_0042 != Gi_0041);
+   } 
+   if (Gb_0044) { 
+   Gb_0044 = true;
+   } 
+   else { 
+   Gb_0045 = (Gi_0040 == 1);
+   if (Gb_0045) { 
+   Gb_0045 = (Gi_0042 > Gi_0041);
+   } 
+   if (Gb_0045) { 
+   Gb_0045 = true;
+   } 
+   else { 
+   Gb_0046 = (Gi_0040 == 2);
+   if (Gb_0046) { 
+   Gb_0046 = (Gi_0042 < Gi_0041);
+   } 
+   if (Gb_0046) { 
+   Gb_0046 = true;
+   } 
+   else { 
+   Gb_0047 = (Gi_0040 == 4);
+   if (Gb_0047) { 
+   Gb_0047 = (Gi_0042 >= Gi_0041);
+   } 
+   if (Gb_0047) { 
+   Gb_0047 = true;
+   } 
+   else { 
+   Gb_0048 = (Gi_0040 == 5);
+   if (Gb_0048) { 
+   Gb_0048 = (Gi_0042 <= Gi_0041);
+   } 
+   if (Gb_0048) { 
+   Gb_0048 = true;
+   } 
+   else { 
+   Gb_0048 = false;
+   } 
+   Gb_0047 = Gb_0048;
+   } 
+   Gb_0046 = Gb_0047;
+   } 
+   Gb_0045 = Gb_0046;
+   } 
+   Gb_0044 = Gb_0045;
+   } 
+   Gb_0043 = Gb_0044;
+   } 
+   Lb_FFFF = Gb_0043;
+   return Lb_FFFF;
+   }
+   if (returned_i == 9){
+   
+   Gi_0048 = Fa_i_03;
+   Gb_0049 = FuncArg_Struct_00000002.m_24;
+   Gb_004A = FuncArg_Struct_00000001.m_24;
+   Gb_004B = (Fa_i_03 == 0);
+   if (Gb_004B) { 
+   Gb_004B = (Gb_004A == Gb_0049);
+   } 
+   if (Gb_004B) { 
+   Gb_004B = true;
+   } 
+   else { 
+   Gb_004C = (Gi_0048 == 3);
+   if (Gb_004C) { 
+   Gb_004C = (Gb_004A != Gb_0049);
+   } 
+   if (Gb_004C) { 
+   Gb_004C = true;
+   } 
+   else { 
+   Gb_004D = (Gi_0048 == 1);
+   if (Gb_004D) { 
+   Gb_004D = (Gb_004A > Gb_0049);
+   } 
+   if (Gb_004D) { 
+   Gb_004D = true;
+   } 
+   else { 
+   Gb_004E = (Gi_0048 == 2);
+   if (Gb_004E) { 
+   Gb_004E = (Gb_004A < Gb_0049);
+   } 
+   if (Gb_004E) { 
+   Gb_004E = true;
+   } 
+   else { 
+   Gb_004F = (Gi_0048 == 4);
+   if (Gb_004F) { 
+   Gb_004F = (Gb_004A >= Gb_0049);
+   } 
+   if (Gb_004F) { 
+   Gb_004F = true;
+   } 
+   else { 
+   Gb_0050 = (Gi_0048 == 5);
+   if (Gb_0050) { 
+   Gb_0050 = (Gb_004A <= Gb_0049);
+   } 
+   if (Gb_0050) { 
+   Gb_0050 = true;
+   } 
+   else { 
+   Gb_0050 = false;
+   } 
+   Gb_004F = Gb_0050;
+   } 
+   Gb_004E = Gb_004F;
+   } 
+   Gb_004D = Gb_004E;
+   } 
+   Gb_004C = Gb_004D;
+   } 
+   Gb_004B = Gb_004C;
+   } 
+   Lb_FFFF = Gb_004B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 10){
+   
+   Gi_0050 = Fa_i_03;
+   Gb_0051 = FuncArg_Struct_00000002.m_25;
+   Gb_0052 = FuncArg_Struct_00000001.m_25;
+   Gb_0053 = (Fa_i_03 == 0);
+   if (Gb_0053) { 
+   Gb_0053 = (Gb_0052 == Gb_0051);
+   } 
+   if (Gb_0053) { 
+   Gb_0053 = true;
+   } 
+   else { 
+   Gb_0054 = (Gi_0050 == 3);
+   if (Gb_0054) { 
+   Gb_0054 = (Gb_0052 != Gb_0051);
+   } 
+   if (Gb_0054) { 
+   Gb_0054 = true;
+   } 
+   else { 
+   Gb_0055 = (Gi_0050 == 1);
+   if (Gb_0055) { 
+   Gb_0055 = (Gb_0052 > Gb_0051);
+   } 
+   if (Gb_0055) { 
+   Gb_0055 = true;
+   } 
+   else { 
+   Gb_0056 = (Gi_0050 == 2);
+   if (Gb_0056) { 
+   Gb_0056 = (Gb_0052 < Gb_0051);
+   } 
+   if (Gb_0056) { 
+   Gb_0056 = true;
+   } 
+   else { 
+   Gb_0057 = (Gi_0050 == 4);
+   if (Gb_0057) { 
+   Gb_0057 = (Gb_0052 >= Gb_0051);
+   } 
+   if (Gb_0057) { 
+   Gb_0057 = true;
+   } 
+   else { 
+   Gb_0058 = (Gi_0050 == 5);
+   if (Gb_0058) { 
+   Gb_0058 = (Gb_0052 <= Gb_0051);
+   } 
+   if (Gb_0058) { 
+   Gb_0058 = true;
+   } 
+   else { 
+   Gb_0058 = false;
+   } 
+   Gb_0057 = Gb_0058;
+   } 
+   Gb_0056 = Gb_0057;
+   } 
+   Gb_0055 = Gb_0056;
+   } 
+   Gb_0054 = Gb_0055;
+   } 
+   Gb_0053 = Gb_0054;
+   } 
+   Lb_FFFF = Gb_0053;
+   return Lb_FFFF;
+   }
+   if (returned_i == 11){
+   
+   Gi_0058 = Fa_i_03;
+   Gd_0059 = FuncArg_Struct_00000002.m_42;
+   Gd_005A = FuncArg_Struct_00000001.m_42;
+   Gb_005B = (Fa_i_03 == 0);
+   if (Gb_005B) { 
+   Gb_005B = (Gd_005A == Gd_0059);
+   } 
+   if (Gb_005B) { 
+   Gb_005B = true;
+   } 
+   else { 
+   Gb_005C = (Gi_0058 == 3);
+   if (Gb_005C) { 
+   Gb_005C = (Gd_005A != Gd_0059);
+   } 
+   if (Gb_005C) { 
+   Gb_005C = true;
+   } 
+   else { 
+   Gb_005D = (Gi_0058 == 1);
+   if (Gb_005D) { 
+   Gb_005D = (Gd_005A > Gd_0059);
+   } 
+   if (Gb_005D) { 
+   Gb_005D = true;
+   } 
+   else { 
+   Gb_005E = (Gi_0058 == 2);
+   if (Gb_005E) { 
+   Gb_005E = (Gd_005A < Gd_0059);
+   } 
+   if (Gb_005E) { 
+   Gb_005E = true;
+   } 
+   else { 
+   Gb_005F = (Gi_0058 == 4);
+   if (Gb_005F) { 
+   Gb_005F = (Gd_005A >= Gd_0059);
+   } 
+   if (Gb_005F) { 
+   Gb_005F = true;
+   } 
+   else { 
+   Gb_0060 = (Gi_0058 == 5);
+   if (Gb_0060) { 
+   Gb_0060 = (Gd_005A <= Gd_0059);
+   } 
+   if (Gb_0060) { 
+   Gb_0060 = true;
+   } 
+   else { 
+   Gb_0060 = false;
+   } 
+   Gb_005F = Gb_0060;
+   } 
+   Gb_005E = Gb_005F;
+   } 
+   Gb_005D = Gb_005E;
+   } 
+   Gb_005C = Gb_005D;
+   } 
+   Gb_005B = Gb_005C;
+   } 
+   Lb_FFFF = Gb_005B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 12){
+   
+   Gi_0060 = Fa_i_03;
+   Gd_0061 = FuncArg_Struct_00000002.m_50;
+   Gd_0062 = FuncArg_Struct_00000001.m_50;
+   Gb_0063 = (Fa_i_03 == 0);
+   if (Gb_0063) { 
+   Gb_0063 = (Gd_0062 == Gd_0061);
+   } 
+   if (Gb_0063) { 
+   Gb_0063 = true;
+   } 
+   else { 
+   Gb_0064 = (Gi_0060 == 3);
+   if (Gb_0064) { 
+   Gb_0064 = (Gd_0062 != Gd_0061);
+   } 
+   if (Gb_0064) { 
+   Gb_0064 = true;
+   } 
+   else { 
+   Gb_0065 = (Gi_0060 == 1);
+   if (Gb_0065) { 
+   Gb_0065 = (Gd_0062 > Gd_0061);
+   } 
+   if (Gb_0065) { 
+   Gb_0065 = true;
+   } 
+   else { 
+   Gb_0066 = (Gi_0060 == 2);
+   if (Gb_0066) { 
+   Gb_0066 = (Gd_0062 < Gd_0061);
+   } 
+   if (Gb_0066) { 
+   Gb_0066 = true;
+   } 
+   else { 
+   Gb_0067 = (Gi_0060 == 4);
+   if (Gb_0067) { 
+   Gb_0067 = (Gd_0062 >= Gd_0061);
+   } 
+   if (Gb_0067) { 
+   Gb_0067 = true;
+   } 
+   else { 
+   Gb_0068 = (Gi_0060 == 5);
+   if (Gb_0068) { 
+   Gb_0068 = (Gd_0062 <= Gd_0061);
+   } 
+   if (Gb_0068) { 
+   Gb_0068 = true;
+   } 
+   else { 
+   Gb_0068 = false;
+   } 
+   Gb_0067 = Gb_0068;
+   } 
+   Gb_0066 = Gb_0067;
+   } 
+   Gb_0065 = Gb_0066;
+   } 
+   Gb_0064 = Gb_0065;
+   } 
+   Gb_0063 = Gb_0064;
+   } 
+   Lb_FFFF = Gb_0063;
+   return Lb_FFFF;
+   }
+   if (returned_i == 13){
+   
+   Gi_0068 = Fa_i_03;
+   Gd_0069 = FuncArg_Struct_00000002.m_58;
+   Gd_006A = FuncArg_Struct_00000001.m_58;
+   Gb_006B = (Fa_i_03 == 0);
+   if (Gb_006B) { 
+   Gb_006B = (Gd_006A == Gd_0069);
+   } 
+   if (Gb_006B) { 
+   Gb_006B = true;
+   } 
+   else { 
+   Gb_006C = (Gi_0068 == 3);
+   if (Gb_006C) { 
+   Gb_006C = (Gd_006A != Gd_0069);
+   } 
+   if (Gb_006C) { 
+   Gb_006C = true;
+   } 
+   else { 
+   Gb_006D = (Gi_0068 == 1);
+   if (Gb_006D) { 
+   Gb_006D = (Gd_006A > Gd_0069);
+   } 
+   if (Gb_006D) { 
+   Gb_006D = true;
+   } 
+   else { 
+   Gb_006E = (Gi_0068 == 2);
+   if (Gb_006E) { 
+   Gb_006E = (Gd_006A < Gd_0069);
+   } 
+   if (Gb_006E) { 
+   Gb_006E = true;
+   } 
+   else { 
+   Gb_006F = (Gi_0068 == 4);
+   if (Gb_006F) { 
+   Gb_006F = (Gd_006A >= Gd_0069);
+   } 
+   if (Gb_006F) { 
+   Gb_006F = true;
+   } 
+   else { 
+   Gb_0070 = (Gi_0068 == 5);
+   if (Gb_0070) { 
+   Gb_0070 = (Gd_006A <= Gd_0069);
+   } 
+   if (Gb_0070) { 
+   Gb_0070 = true;
+   } 
+   else { 
+   Gb_0070 = false;
+   } 
+   Gb_006F = Gb_0070;
+   } 
+   Gb_006E = Gb_006F;
+   } 
+   Gb_006D = Gb_006E;
+   } 
+   Gb_006C = Gb_006D;
+   } 
+   Gb_006B = Gb_006C;
+   } 
+   Lb_FFFF = Gb_006B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 14){
+   
+   Gi_0070 = Fa_i_03;
+   Gd_0071 = FuncArg_Struct_00000002.m_66;
+   Gd_0072 = FuncArg_Struct_00000001.m_66;
+   Gb_0073 = (Fa_i_03 == 0);
+   if (Gb_0073) { 
+   Gb_0073 = (Gd_0072 == Gd_0071);
+   } 
+   if (Gb_0073) { 
+   Gb_0073 = true;
+   } 
+   else { 
+   Gb_0074 = (Gi_0070 == 3);
+   if (Gb_0074) { 
+   Gb_0074 = (Gd_0072 != Gd_0071);
+   } 
+   if (Gb_0074) { 
+   Gb_0074 = true;
+   } 
+   else { 
+   Gb_0075 = (Gi_0070 == 1);
+   if (Gb_0075) { 
+   Gb_0075 = (Gd_0072 > Gd_0071);
+   } 
+   if (Gb_0075) { 
+   Gb_0075 = true;
+   } 
+   else { 
+   Gb_0076 = (Gi_0070 == 2);
+   if (Gb_0076) { 
+   Gb_0076 = (Gd_0072 < Gd_0071);
+   } 
+   if (Gb_0076) { 
+   Gb_0076 = true;
+   } 
+   else { 
+   Gb_0077 = (Gi_0070 == 4);
+   if (Gb_0077) { 
+   Gb_0077 = (Gd_0072 >= Gd_0071);
+   } 
+   if (Gb_0077) { 
+   Gb_0077 = true;
+   } 
+   else { 
+   Gb_0078 = (Gi_0070 == 5);
+   if (Gb_0078) { 
+   Gb_0078 = (Gd_0072 <= Gd_0071);
+   } 
+   if (Gb_0078) { 
+   Gb_0078 = true;
+   } 
+   else { 
+   Gb_0078 = false;
+   } 
+   Gb_0077 = Gb_0078;
+   } 
+   Gb_0076 = Gb_0077;
+   } 
+   Gb_0075 = Gb_0076;
+   } 
+   Gb_0074 = Gb_0075;
+   } 
+   Gb_0073 = Gb_0074;
+   } 
+   Lb_FFFF = Gb_0073;
+   return Lb_FFFF;
+   }
+   if (returned_i == 15){
+   
+   Gi_0078 = Fa_i_03;
+   Gd_0079 = FuncArg_Struct_00000002.m_74;
+   Gd_007A = FuncArg_Struct_00000001.m_74;
+   Gb_007B = (Fa_i_03 == 0);
+   if (Gb_007B) { 
+   Gb_007B = (Gd_007A == Gd_0079);
+   } 
+   if (Gb_007B) { 
+   Gb_007B = true;
+   } 
+   else { 
+   Gb_007C = (Gi_0078 == 3);
+   if (Gb_007C) { 
+   Gb_007C = (Gd_007A != Gd_0079);
+   } 
+   if (Gb_007C) { 
+   Gb_007C = true;
+   } 
+   else { 
+   Gb_007D = (Gi_0078 == 1);
+   if (Gb_007D) { 
+   Gb_007D = (Gd_007A > Gd_0079);
+   } 
+   if (Gb_007D) { 
+   Gb_007D = true;
+   } 
+   else { 
+   Gb_007E = (Gi_0078 == 2);
+   if (Gb_007E) { 
+   Gb_007E = (Gd_007A < Gd_0079);
+   } 
+   if (Gb_007E) { 
+   Gb_007E = true;
+   } 
+   else { 
+   Gb_007F = (Gi_0078 == 4);
+   if (Gb_007F) { 
+   Gb_007F = (Gd_007A >= Gd_0079);
+   } 
+   if (Gb_007F) { 
+   Gb_007F = true;
+   } 
+   else { 
+   Gb_0080 = (Gi_0078 == 5);
+   if (Gb_0080) { 
+   Gb_0080 = (Gd_007A <= Gd_0079);
+   } 
+   if (Gb_0080) { 
+   Gb_0080 = true;
+   } 
+   else { 
+   Gb_0080 = false;
+   } 
+   Gb_007F = Gb_0080;
+   } 
+   Gb_007E = Gb_007F;
+   } 
+   Gb_007D = Gb_007E;
+   } 
+   Gb_007C = Gb_007D;
+   } 
+   Gb_007B = Gb_007C;
+   } 
+   Lb_FFFF = Gb_007B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 16){
+   
+   Gi_0080 = Fa_i_03;
+   Gd_0081 = FuncArg_Struct_00000002.m_82;
+   Gd_0082 = FuncArg_Struct_00000001.m_82;
+   Gb_0083 = (Fa_i_03 == 0);
+   if (Gb_0083) { 
+   Gb_0083 = (Gd_0082 == Gd_0081);
+   } 
+   if (Gb_0083) { 
+   Gb_0083 = true;
+   } 
+   else { 
+   Gb_0084 = (Gi_0080 == 3);
+   if (Gb_0084) { 
+   Gb_0084 = (Gd_0082 != Gd_0081);
+   } 
+   if (Gb_0084) { 
+   Gb_0084 = true;
+   } 
+   else { 
+   Gb_0085 = (Gi_0080 == 1);
+   if (Gb_0085) { 
+   Gb_0085 = (Gd_0082 > Gd_0081);
+   } 
+   if (Gb_0085) { 
+   Gb_0085 = true;
+   } 
+   else { 
+   Gb_0086 = (Gi_0080 == 2);
+   if (Gb_0086) { 
+   Gb_0086 = (Gd_0082 < Gd_0081);
+   } 
+   if (Gb_0086) { 
+   Gb_0086 = true;
+   } 
+   else { 
+   Gb_0087 = (Gi_0080 == 4);
+   if (Gb_0087) { 
+   Gb_0087 = (Gd_0082 >= Gd_0081);
+   } 
+   if (Gb_0087) { 
+   Gb_0087 = true;
+   } 
+   else { 
+   Gb_0088 = (Gi_0080 == 5);
+   if (Gb_0088) { 
+   Gb_0088 = (Gd_0082 <= Gd_0081);
+   } 
+   if (Gb_0088) { 
+   Gb_0088 = true;
+   } 
+   else { 
+   Gb_0088 = false;
+   } 
+   Gb_0087 = Gb_0088;
+   } 
+   Gb_0086 = Gb_0087;
+   } 
+   Gb_0085 = Gb_0086;
+   } 
+   Gb_0084 = Gb_0085;
+   } 
+   Gb_0083 = Gb_0084;
+   } 
+   Lb_FFFF = Gb_0083;
+   return Lb_FFFF;
+   }
+   if (returned_i == 17){
+   
+   Gi_0088 = Fa_i_03;
+   Gd_0089 = FuncArg_Struct_00000002.m_90;
+   Gd_008A = FuncArg_Struct_00000001.m_90;
+   Gb_008B = (Fa_i_03 == 0);
+   if (Gb_008B) { 
+   Gb_008B = (Gd_008A == Gd_0089);
+   } 
+   if (Gb_008B) { 
+   Gb_008B = true;
+   } 
+   else { 
+   Gb_008C = (Gi_0088 == 3);
+   if (Gb_008C) { 
+   Gb_008C = (Gd_008A != Gd_0089);
+   } 
+   if (Gb_008C) { 
+   Gb_008C = true;
+   } 
+   else { 
+   Gb_008D = (Gi_0088 == 1);
+   if (Gb_008D) { 
+   Gb_008D = (Gd_008A > Gd_0089);
+   } 
+   if (Gb_008D) { 
+   Gb_008D = true;
+   } 
+   else { 
+   Gb_008E = (Gi_0088 == 2);
+   if (Gb_008E) { 
+   Gb_008E = (Gd_008A < Gd_0089);
+   } 
+   if (Gb_008E) { 
+   Gb_008E = true;
+   } 
+   else { 
+   Gb_008F = (Gi_0088 == 4);
+   if (Gb_008F) { 
+   Gb_008F = (Gd_008A >= Gd_0089);
+   } 
+   if (Gb_008F) { 
+   Gb_008F = true;
+   } 
+   else { 
+   Gb_0090 = (Gi_0088 == 5);
+   if (Gb_0090) { 
+   Gb_0090 = (Gd_008A <= Gd_0089);
+   } 
+   if (Gb_0090) { 
+   Gb_0090 = true;
+   } 
+   else { 
+   Gb_0090 = false;
+   } 
+   Gb_008F = Gb_0090;
+   } 
+   Gb_008E = Gb_008F;
+   } 
+   Gb_008D = Gb_008E;
+   } 
+   Gb_008C = Gb_008D;
+   } 
+   Gb_008B = Gb_008C;
+   } 
+   Lb_FFFF = Gb_008B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 18){
+   
+   Gi_0090 = Fa_i_03;
+   Gd_0091 = FuncArg_Struct_00000002.m_34;
+   Gd_0092 = FuncArg_Struct_00000001.m_34;
+   Gb_0093 = (Fa_i_03 == 0);
+   if (Gb_0093) { 
+   Gb_0093 = (Gd_0092 == Gd_0091);
+   } 
+   if (Gb_0093) { 
+   Gb_0093 = true;
+   } 
+   else { 
+   Gb_0094 = (Gi_0090 == 3);
+   if (Gb_0094) { 
+   Gb_0094 = (Gd_0092 != Gd_0091);
+   } 
+   if (Gb_0094) { 
+   Gb_0094 = true;
+   } 
+   else { 
+   Gb_0095 = (Gi_0090 == 1);
+   if (Gb_0095) { 
+   Gb_0095 = (Gd_0092 > Gd_0091);
+   } 
+   if (Gb_0095) { 
+   Gb_0095 = true;
+   } 
+   else { 
+   Gb_0096 = (Gi_0090 == 2);
+   if (Gb_0096) { 
+   Gb_0096 = (Gd_0092 < Gd_0091);
+   } 
+   if (Gb_0096) { 
+   Gb_0096 = true;
+   } 
+   else { 
+   Gb_0097 = (Gi_0090 == 4);
+   if (Gb_0097) { 
+   Gb_0097 = (Gd_0092 >= Gd_0091);
+   } 
+   if (Gb_0097) { 
+   Gb_0097 = true;
+   } 
+   else { 
+   Gb_0098 = (Gi_0090 == 5);
+   if (Gb_0098) { 
+   Gb_0098 = (Gd_0092 <= Gd_0091);
+   } 
+   if (Gb_0098) { 
+   Gb_0098 = true;
+   } 
+   else { 
+   Gb_0098 = false;
+   } 
+   Gb_0097 = Gb_0098;
+   } 
+   Gb_0096 = Gb_0097;
+   } 
+   Gb_0095 = Gb_0096;
+   } 
+   Gb_0094 = Gb_0095;
+   } 
+   Gb_0093 = Gb_0094;
+   } 
+   Lb_FFFF = Gb_0093;
+   return Lb_FFFF;
+   }
+   if (returned_i == 19){
+   
+   Gi_0098 = Fa_i_03;
+   Gd_0099 = FuncArg_Struct_00000002.m_98;
+   Gd_009A = FuncArg_Struct_00000001.m_98;
+   Gb_009B = (Fa_i_03 == 0);
+   if (Gb_009B) { 
+   Gb_009B = (Gd_009A == Gd_0099);
+   } 
+   if (Gb_009B) { 
+   Gb_009B = true;
+   } 
+   else { 
+   Gb_009C = (Gi_0098 == 3);
+   if (Gb_009C) { 
+   Gb_009C = (Gd_009A != Gd_0099);
+   } 
+   if (Gb_009C) { 
+   Gb_009C = true;
+   } 
+   else { 
+   Gb_009D = (Gi_0098 == 1);
+   if (Gb_009D) { 
+   Gb_009D = (Gd_009A > Gd_0099);
+   } 
+   if (Gb_009D) { 
+   Gb_009D = true;
+   } 
+   else { 
+   Gb_009E = (Gi_0098 == 2);
+   if (Gb_009E) { 
+   Gb_009E = (Gd_009A < Gd_0099);
+   } 
+   if (Gb_009E) { 
+   Gb_009E = true;
+   } 
+   else { 
+   Gb_009F = (Gi_0098 == 4);
+   if (Gb_009F) { 
+   Gb_009F = (Gd_009A >= Gd_0099);
+   } 
+   if (Gb_009F) { 
+   Gb_009F = true;
+   } 
+   else { 
+   Gb_00A0 = (Gi_0098 == 5);
+   if (Gb_00A0) { 
+   Gb_00A0 = (Gd_009A <= Gd_0099);
+   } 
+   if (Gb_00A0) { 
+   Gb_00A0 = true;
+   } 
+   else { 
+   Gb_00A0 = false;
+   } 
+   Gb_009F = Gb_00A0;
+   } 
+   Gb_009E = Gb_009F;
+   } 
+   Gb_009D = Gb_009E;
+   } 
+   Gb_009C = Gb_009D;
+   } 
+   Gb_009B = Gb_009C;
+   } 
+   Lb_FFFF = Gb_009B;
+   return Lb_FFFF;
+   }
+   if (returned_i == 20){
+   
+   Gi_00A0 = Fa_i_03;
+   tmp_str0000 = FuncArg_Struct_00000002.m_130;
+   tmp_str0001 = FuncArg_Struct_00000001.m_130;
+   Gb_00A1 = (Fa_i_03 == 0);
+   if (Gb_00A1) { 
+   Gb_00A1 = (tmp_str0001 == tmp_str0000);
+   } 
+   if (Gb_00A1) { 
+   Gb_00A1 = true;
+   } 
+   else { 
+   Gb_00A2 = (Gi_00A0 == 3);
+   if (Gb_00A2) { 
+   Gb_00A2 = (tmp_str0001 != tmp_str0000);
+   } 
+   if (Gb_00A2) { 
+   Gb_00A2 = true;
+   } 
+   else { 
+   Gb_00A3 = (Gi_00A0 == 1);
+   if (Gb_00A3) { 
+   Gb_00A3 = (tmp_str0001 > tmp_str0000);
+   } 
+   if (Gb_00A3) { 
+   Gb_00A3 = true;
+   } 
+   else { 
+   Gb_00A4 = (Gi_00A0 == 2);
+   if (Gb_00A4) { 
+   Gb_00A4 = (tmp_str0001 < tmp_str0000);
+   } 
+   if (Gb_00A4) { 
+   Gb_00A4 = true;
+   } 
+   else { 
+   Gb_00A5 = (Gi_00A0 == 4);
+   if (Gb_00A5) { 
+   Gb_00A5 = (tmp_str0001 >= tmp_str0000);
+   } 
+   if (Gb_00A5) { 
+   Gb_00A5 = true;
+   } 
+   else { 
+   Gb_00A6 = (Gi_00A0 == 5);
+   if (Gb_00A6) { 
+   Gb_00A6 = (tmp_str0001 <= tmp_str0000);
+   } 
+   if (Gb_00A6) { 
+   Gb_00A6 = true;
+   } 
+   else { 
+   Gb_00A6 = false;
+   } 
+   Gb_00A5 = Gb_00A6;
+   } 
+   Gb_00A4 = Gb_00A5;
+   } 
+   Gb_00A3 = Gb_00A4;
+   } 
+   Gb_00A2 = Gb_00A3;
+   } 
+   Gb_00A1 = Gb_00A2;
+   } 
+   Lb_FFFF = Gb_00A1;
+   return Lb_FFFF;
+   }
+   if (returned_i == 21){
+   
+   Gi_00A6 = Fa_i_03;
+   tmp_str0002 = FuncArg_Struct_00000002.m_142;
+   tmp_str0003 = FuncArg_Struct_00000001.m_142;
+   Gb_00A7 = (Fa_i_03 == 0);
+   if (Gb_00A7) { 
+   Gb_00A7 = (tmp_str0003 == tmp_str0002);
+   } 
+   if (Gb_00A7) { 
+   Gb_00A7 = true;
+   } 
+   else { 
+   Gb_00A8 = (Gi_00A6 == 3);
+   if (Gb_00A8) { 
+   Gb_00A8 = (tmp_str0003 != tmp_str0002);
+   } 
+   if (Gb_00A8) { 
+   Gb_00A8 = true;
+   } 
+   else { 
+   Gb_00A9 = (Gi_00A6 == 1);
+   if (Gb_00A9) { 
+   Gb_00A9 = (tmp_str0003 > tmp_str0002);
+   } 
+   if (Gb_00A9) { 
+   Gb_00A9 = true;
+   } 
+   else { 
+   Gb_00AA = (Gi_00A6 == 2);
+   if (Gb_00AA) { 
+   Gb_00AA = (tmp_str0003 < tmp_str0002);
+   } 
+   if (Gb_00AA) { 
+   Gb_00AA = true;
+   } 
+   else { 
+   Gb_00AB = (Gi_00A6 == 4);
+   if (Gb_00AB) { 
+   Gb_00AB = (tmp_str0003 >= tmp_str0002);
+   } 
+   if (Gb_00AB) { 
+   Gb_00AB = true;
+   } 
+   else { 
+   Gb_00AC = (Gi_00A6 == 5);
+   if (Gb_00AC) { 
+   Gb_00AC = (tmp_str0003 <= tmp_str0002);
+   } 
+   if (Gb_00AC) { 
+   Gb_00AC = true;
+   } 
+   else { 
+   Gb_00AC = false;
+   } 
+   Gb_00AB = Gb_00AC;
+   } 
+   Gb_00AA = Gb_00AB;
+   } 
+   Gb_00A9 = Gb_00AA;
+   } 
+   Gb_00A8 = Gb_00A9;
+   } 
+   Gb_00A7 = Gb_00A8;
+   } 
+   Lb_FFFF = Gb_00A7;
+   return Lb_FFFF;
+   }
+   Lb_FFFF = false;
+   
+   return Lb_FFFF;
+}
+
+void func_1076(string Fa_s_00, double &Fa_d_01, bool FuncArg_Boolean_00000002)
+{
+   double Ld_FFF8;
+   double Ld_FFF0;
+   double Ld_FFE8;
+   double Ld_FFE0;
+   int Li_FFDC;
+   double Ld_FFD0;
+
+   Ld_FFF8 = MarketInfo(Fa_s_00, MODE_MINLOT);
+   Ld_FFF0 = MarketInfo(Fa_s_00, MODE_MAXLOT);
+   Ld_FFE8 = MarketInfo(Fa_s_00, MODE_LOTSTEP);
+   if ((Fa_d_01 < Ld_FFF8)) { 
+   PrintFormat("计算手数%f小于平台最小手数%f以最小手数为准", Fa_d_01, Ld_FFF8);
+   Fa_d_01 = Ld_FFF8;
+   return ;
+   } 
+   if ((Fa_d_01 > Ld_FFF0)) { 
+   PrintFormat("计算手数%f大于平台最大手数%f以最大手数为准", Fa_d_01, Ld_FFF0);
+   Fa_d_01 = Ld_FFF0;
+   return ;
+   } 
+   Gi_0000 = (int)Ld_FFE8;
+   Ld_FFE0 = (Ld_FFE8 - Gi_0000);
+   Li_FFDC = 0;
+   if ((Ld_FFE0 > 0)) { 
+   Gd_0000 = log(Ld_FFE0);
+   Gd_0000 = fabs((Gd_0000 / 2.30258509299405));
+   Gd_0000 = ceil(Gd_0000);
+   Li_FFDC = (int)Gd_0000;
+   } 
+   if (FuncArg_Boolean_00000002 == 0) { 
+   returned_double = MathPow(10, Li_FFDC);
+   Gi_0002 = (int)returned_double;
+   Gi_0003 = (int)(Fa_d_01 * Gi_0002);
+   Gd_0003 = Gi_0003;
+   Fa_d_01 = (Gd_0003 / Gi_0002);
+   } 
+   else { 
+   Fa_d_01 = NormalizeDouble(Fa_d_01, Li_FFDC);
+   } 
+   Gd_0002 = (Fa_d_01 - Ld_FFF8);
+   Ld_FFD0 = (Gd_0002 / Ld_FFE8);
+   Ld_FFD0 = NormalizeDouble(Ld_FFD0, 0);
+   Fa_d_01 = ((Ld_FFE8 * Ld_FFD0) + Ld_FFF8);
+   if (FuncArg_Boolean_00000002 == 0) { 
+   returned_double = MathPow(10, Li_FFDC);
+   Gi_0006 = (int)returned_double;
+   Gi_0007 = (int)(Fa_d_01 * Gi_0006);
+   Gd_0007 = Gi_0007;
+   Fa_d_01 = (Gd_0007 / Gi_0006);
+   } 
+   else { 
+   Fa_d_01 = NormalizeDouble(Fa_d_01, Li_FFDC);
+   } 
+   if ((Fa_d_01 < Ld_FFF8)) { 
+   Gd_0006 = Ld_FFF8;
+   } 
+   else { 
+   if ((Fa_d_01 > Ld_FFF0)) { 
+   Gd_0008 = Ld_FFF0;
+   } 
+   else { 
+   Gd_0008 = Fa_d_01;
+   } 
+   Gd_0006 = Gd_0008;
+   } 
+   Fa_d_01 = Gd_0006;
+   
+}
+
+int func_1080(string Fa_s_00, double Fa_d_01, double Fa_d_02, double Fa_d_03, int Fa_i_04, string Fa_s_05, int Fa_i_06, double Fa_d_07, double Fa_d_08, int Fa_i_09, int Fa_i_0A)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   bool Lb_FFFB;
+   int Li_FFF4;
+   int Li_FFF0;
+   int Li_FFEC;
+   int Li_FFE8;
+   int Li_FFFC;
+
+   Lb_FFFB = false;
+   Li_FFF4 = 0;
+   tmp_str0000 = Fa_s_00;
+   func_1076(tmp_str0000, Fa_d_01, true);
+   Li_FFF0 = 1;
+   if (Fa_i_0A >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0001 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0001, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0001, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0001, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0001, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0001, MODE_SPREAD);
+   Id_0148 = (double)MarketInfo(tmp_str0001, MODE_STOPLEVEL);
+   Li_FFF4 = OrderSend(Fa_s_00, 0, Fa_d_01, Id_0118, Fa_i_06, 0, 0, Fa_s_05, Fa_i_04, 0, Fa_i_09);
+   if (Li_FFF4 > 0) break; 
+   Sleep(200);
+   Li_FFF0 = Li_FFF0 + 1;
+   } while (Li_FFF0 <= Fa_i_0A); 
+   } 
+   if (Li_FFF4 > 0) { 
+   Ii_0168 = Ii_0168 + 1;
+   Li_FFEC = 1;
+   if (Fa_i_0A >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0002 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0002, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0002, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0002, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0002, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0002, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0002, MODE_STOPLEVEL);
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0 && (Fa_d_02 < ((Id_0148 + Ii_0144) + 5))) { 
+   Fa_d_02 = ((Id_0148 + Ii_0144) + 5);
+   } 
+   if ((Fa_d_07 == 0)) { 
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_02 * Id_0138);
+   Fa_d_07 = (Id_0118 - Gd_0000);
+   }} 
+   if ((Fa_d_07 == 0)) break; 
+   Fa_d_07 = NormalizeDouble(Fa_d_07, Ii_0140);
+   if (OrderSelect(Li_FFF4, 1, 0) == true) { 
+   Lb_FFFB = OrderModify(Li_FFF4, OrderOpenPrice(), Fa_d_07, 0, 0, Fa_i_09);
+   if (Lb_FFFB != 0) break; 
+   if (Li_FFEC == Fa_i_0A) { 
+   tmp_str0003 = DoubleToString(Fa_d_07, Ii_0140);
+   PrintFormat("%s,%d,Stop price %s Setting failed, code=%d", Fa_s_00, Li_FFF4, tmp_str0003, GetLastError());
+   } 
+   else { 
+   Sleep(200);
+   }} 
+   Li_FFEC = Li_FFEC + 1;
+   } while (Li_FFEC <= Fa_i_0A); 
+   } 
+   Li_FFE8 = 1;
+   if (Fa_i_0A < 1) return Li_FFF4; 
+   do { 
+   RefreshRates();
+   tmp_str0004 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0004, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0004, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0004, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0004, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0004, MODE_SPREAD);
+   Id_0148 = (double)MarketInfo(tmp_str0004, MODE_STOPLEVEL);
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0 && (Fa_d_03 < ((Id_0148 + Ii_0144) + 5))) { 
+   Fa_d_03 = ((Id_0148 + Ii_0144) + 5);
+   } 
+   if ((Fa_d_08 == 0)) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) { 
+   Fa_d_08 = ((Fa_d_03 * Id_0138) + Id_0118);
+   }} 
+   if ((Fa_d_08 == 0)) return Li_FFF4; 
+   Fa_d_08 = NormalizeDouble(Fa_d_08, Ii_0140);
+   if (OrderSelect(Li_FFF4, 1, 0) == true) { 
+   Lb_FFFB = OrderModify(Li_FFF4, OrderOpenPrice(), OrderStopLoss(), Fa_d_08, 0, Fa_i_09);
+   if (Lb_FFFB != 0) return Li_FFF4; 
+   if (Li_FFE8 == Fa_i_0A) { 
+   tmp_str0005 = DoubleToString(Fa_d_08, Ii_0140);
+   PrintFormat("%s,%d,Take profit price %s Setting failed, code=%d", Fa_s_00, Li_FFF4, tmp_str0005, GetLastError());
+   } 
+   else { 
+   Sleep(200);
+   }} 
+   Li_FFE8 = Li_FFE8 + 1;
+   } while (Li_FFE8 <= Fa_i_0A); 
+   return Li_FFF4;
+   } 
+   tmp_str0006 = DoubleToString(Id_0118, Ii_0140);
+   PrintFormat("%s,Buy price %s Lots %f, Failure to open an order, code =%d", Fa_s_00, tmp_str0006, Fa_d_01, GetLastError());
+   
+   Li_FFFC = Li_FFF4;
+   return Li_FFF4;
+}
+
+int func_1081(string Fa_s_00, double Fa_d_01, double Fa_d_02, double Fa_d_03, int Fa_i_04, string Fa_s_05, int Fa_i_06, double Fa_d_07, double Fa_d_08, int Fa_i_09, int Fa_i_0A)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   bool Lb_FFFB;
+   int Li_FFF4;
+   int Li_FFF0;
+   int Li_FFEC;
+   int Li_FFE8;
+   int Li_FFFC;
+
+   Lb_FFFB = false;
+   Li_FFF4 = 0;
+   tmp_str0000 = Fa_s_00;
+   func_1076(tmp_str0000, Fa_d_01, true);
+   Li_FFF0 = 1;
+   if (Fa_i_0A >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0001 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0001, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0001, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0001, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0001, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0001, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0001, MODE_STOPLEVEL);
+   Li_FFF4 = OrderSend(Fa_s_00, 1, Fa_d_01, Id_0120, Fa_i_06, 0, 0, Fa_s_05, Fa_i_04, 0, Fa_i_09);
+   if (Li_FFF4 > 0) break; 
+   Sleep(200);
+   Li_FFF0 = Li_FFF0 + 1;
+   } while (Li_FFF0 <= Fa_i_0A); 
+   } 
+   if (Li_FFF4 > 0) { 
+   Ii_0168 = Ii_0168 + 1;
+   Li_FFEC = 1;
+   if (Fa_i_0A >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0002 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0002, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0002, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0002, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0002, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0002, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0002, MODE_STOPLEVEL);
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0 && (Fa_d_02 < ((Id_0148 + Ii_0144) + 5))) { 
+   Fa_d_02 = ((Id_0148 + Ii_0144) + 5);
+   } 
+   if ((Fa_d_07 == 0)) { 
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Fa_d_07 = ((Fa_d_02 * Id_0138) + Id_0120);
+   }} 
+   if ((Fa_d_07 == 0)) break; 
+   Fa_d_07 = NormalizeDouble(Fa_d_07, Ii_0140);
+   if (OrderSelect(Li_FFF4, 1, 0) == true) { 
+   Lb_FFFB = OrderModify(Li_FFF4, OrderOpenPrice(), Fa_d_07, 0, 0, Fa_i_09);
+   if (Lb_FFFB != 0) break; 
+   if (Li_FFEC == Fa_i_0A) { 
+   tmp_str0003 = DoubleToString(Fa_d_07, Ii_0140);
+   PrintFormat("%s,%d,Stop price %s Setting failed, code=%d", Fa_s_00, Li_FFF4, tmp_str0003, GetLastError());
+   } 
+   else { 
+   Sleep(200);
+   }} 
+   Li_FFEC = Li_FFEC + 1;
+   } while (Li_FFEC <= Fa_i_0A); 
+   } 
+   Li_FFE8 = 1;
+   if (Fa_i_0A < 1) return Li_FFF4; 
+   do { 
+   RefreshRates();
+   tmp_str0004 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0004, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0004, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0004, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0004, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0004, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0004, MODE_STOPLEVEL);
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0 && (Fa_d_03 < ((Id_0148 + Ii_0144) + 5))) { 
+   Fa_d_03 = ((Id_0148 + Ii_0144) + 5);
+   } 
+   if ((Fa_d_08 == 0)) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_03 * Id_0138);
+   Fa_d_08 = (Id_0120 - Gd_0000);
+   }} 
+   if ((Fa_d_08 == 0)) return Li_FFF4; 
+   Fa_d_08 = NormalizeDouble(Fa_d_08, Ii_0140);
+   if (OrderSelect(Li_FFF4, 1, 0) == true) { 
+   Lb_FFFB = OrderModify(Li_FFF4, OrderOpenPrice(), OrderStopLoss(), Fa_d_08, 0, Fa_i_09);
+   if (Lb_FFFB != 0) return Li_FFF4; 
+   if (Li_FFE8 == Fa_i_0A) { 
+   tmp_str0005 = DoubleToString(Fa_d_08, Ii_0140);
+   PrintFormat("%s,%d,Take profit price %s Setting failed, code=%d", Fa_s_00, Li_FFF4, tmp_str0005, GetLastError());
+   } 
+   else { 
+   Sleep(200);
+   }} 
+   Li_FFE8 = Li_FFE8 + 1;
+   } while (Li_FFE8 <= Fa_i_0A); 
+   return Li_FFF4;
+   } 
+   tmp_str0006 = DoubleToString(Id_0120, Ii_0140);
+   PrintFormat("%s,Sell price %s Lots %f, Failure to open an order, code =%d", Fa_s_00, tmp_str0006, Fa_d_01, GetLastError());
+   
+   Li_FFFC = Li_FFF4;
+   return Li_FFF4;
+}
+
+int func_1085(string Fa_s_00, int Fa_i_01, int Fa_i_02, string Fa_s_03, int Fa_i_04, int Fa_i_05, int Fa_i_06)
+{
+   string tmp_str0000;
+   int Li_FFF8;
+   bool Lb_FFF7;
+   int Li_FFF0;
+   bool Lb_FFEF;
+   int Li_FFE8;
+   int Li_FFE4;
+   int Li_FFFC;
+
+   Li_FFF8 = 0;
+   Lb_FFF7 = false;
+   Li_FFF0 = 1;
+   if (Fa_i_06 < 1) return Li_FFF8; 
+   do { 
+   RefreshRates();
+   Lb_FFEF = true;
+   returned_i = OrdersTotal();
+   Li_FFE8 = returned_i;
+   Li_FFE4 = Li_FFE8;
+   if (returned_i >= 0) { 
+   do { 
+   if (OrderSelect(Li_FFE4, 0, 0) == true) { 
+   if (Fa_s_00 == "" || OrderSymbol() == Fa_s_00) {
+   
+   if (Fa_i_01 == -1 || OrderMagicNumber() == Fa_i_01) {
+   
+   if (Fa_s_03 == "" || Fa_s_03 == ""
+   || StringFind(OrderComment(), Fa_s_03, 0) == 0
+   || OrderComment() == Fa_s_03) {
+   
+   if (func_1071(OrderType(), Fa_i_02) == true) { 
+   if (OrderType() < OP_BUYLIMIT) {
+   Lb_FFF7 = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), Fa_i_04, Fa_i_05);
+   if (Lb_FFF7 == 0) {
+   Lb_FFEF = false;
+   if (Li_FFF0 == Fa_i_06) {
+   PrintFormat("%d,Position Closed failed, code =%d", OrderTicket(), GetLastError());
+   }}
+   else{
+   Li_FFF8 = Li_FFF8 + 1;
+   }}
+   else{
+   Lb_FFF7 = OrderDelete(OrderTicket(), Fa_i_05);
+   if (Lb_FFF7 == 0) {
+   Lb_FFEF = false;
+   if (Li_FFF0 == Fa_i_06) {
+   PrintFormat("%d,pending order delete failed, code =%d", OrderTicket(), GetLastError());
+   }}
+   else{
+   Li_FFF8 = Li_FFF8 + 1;
+   }}}}}}} 
+   Li_FFE4 = Li_FFE4 - 1;
+   } while (Li_FFE4 >= 0); 
+   } 
+   if (Lb_FFEF == true) return Li_FFF8; 
+   Sleep(200);
+   Li_FFF0 = Li_FFF0 + 1;
+   } while (Li_FFF0 <= Fa_i_06); 
+   
+   Li_FFFC = Li_FFF8;
+   return Li_FFF8;
+}
+
+int func_1086(OrderData &FuncArg_Struct_00000000[], int Fa_i_01, int Fa_i_02, int Fa_i_03)
+{
+   int Li_FFF8;
+   int Li_FFF4;
+   bool Lb_FFF3;
+   int Li_FFEC;
+   int Li_FFE8;
+   int Li_FFFC;
+
+   Li_FFF8 = 0;
+   Li_FFF4 = 1;
+   if (Fa_i_03 < 1) return Li_FFF8; 
+   do { 
+   RefreshRates();
+   Lb_FFF3 = true;
+   Li_FFEC = ArraySize(FuncArg_Struct_00000000);
+   Li_FFE8 = Li_FFEC - 1;
+   if (Li_FFE8 >= 0) { 
+   do { 
+   Gi_0000 = Fa_i_02;
+   Gd_0001 = 0;
+   Gi_0003 = FuncArg_Struct_00000000[Li_FFE8].m_0;
+   Gb_0004 = false;
+   if (OrderSelect(Gi_0003, 1, 0) == true) { 
+   Gd_0001 = OrderLots();
+   if (OrderType() < OP_BUYLIMIT) {
+   Gb_0004 = OrderClose(Gi_0003, Gd_0001, OrderClosePrice(), Fa_i_01, Fa_i_02);
+   if (Gb_0004 == 0) {
+   PrintFormat("%d,Position Closed failed,Closed volume %f, code =%d", Gi_0003, Gd_0001, GetLastError());
+   }}
+   else{
+   Gb_0004 = OrderDelete(Gi_0003, Gi_0000);
+   if (Gb_0004 == 0) { 
+   PrintFormat("%d,pending order delete failed, code =%d", Gi_0003, GetLastError());
+   }}} 
+   if (Gb_0004 == 0) { 
+   Lb_FFF3 = false;
+   } 
+   else { 
+   Li_FFF8 = Li_FFF8 + 1;
+   } 
+   Li_FFE8 = Li_FFE8 - 1;
+   } while (Li_FFE8 >= 0); 
+   } 
+   if (Lb_FFF3 == true) return Li_FFF8; 
+   Sleep(200);
+   Li_FFF4 = Li_FFF4 + 1;
+   } while (Li_FFF4 <= Fa_i_03); 
+   
+   Li_FFFC = Li_FFF8;
+   return Li_FFF8;
+}
+
+int func_1087(string Fa_s_00, double Fa_d_01, double Fa_d_02, double Fa_d_03, double Fa_d_04, int Fa_i_05, string Fa_s_06, int Fa_i_07, long Fa_l_08, double Fa_d_09, double Fa_d_0A, int Fa_i_0B, int Fa_i_0C)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   bool Lb_FFFB;
+   int Li_FFF4;
+   int Li_FFF0;
+   int Li_FFFC;
+   int Li_FFEC;
+
+   Lb_FFFB = false;
+   Li_FFF4 = 0;
+   tmp_str0000 = Fa_s_00;
+   func_1076(tmp_str0000, Fa_d_02, true);
+   Fa_d_01 = NormalizeDouble(Fa_d_01, Ii_0140);
+   Li_FFF0 = 1;
+   if (Fa_i_0C >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0001 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0001, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0001, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0001, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0001, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0001, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0001, MODE_STOPLEVEL);
+   Gd_0000 = fabs((Id_0118 - Fa_d_01));
+   if ((Gd_0000 < (Id_0148 * Id_0138))) { 
+   tmp_str0002 = DoubleToString(Fa_d_01, Ii_0140);
+   Print("挂单价：", tmp_str0002, "挂单距离小于平台最小要求距离");
+   Li_FFFC = Li_FFF4;
+   return Li_FFFC;
+   } 
+   if ((Id_0118 > Fa_d_01)) { 
+   Li_FFF4 = OrderSend(Fa_s_00, 2, Fa_d_02, Fa_d_01, Fa_i_07, 0, 0, Fa_s_06, Fa_i_05, Fa_l_08, Fa_i_0B);
+   } 
+   else { 
+   Li_FFF4 = OrderSend(Fa_s_00, 4, Fa_d_02, Fa_d_01, Fa_i_07, 0, 0, Fa_s_06, Fa_i_05, Fa_l_08, Fa_i_0B);
+   } 
+   if (Li_FFF4 > 0) break; 
+   Sleep(100);
+   Li_FFF0 = Li_FFF0 + 1;
+   } while (Li_FFF0 <= Fa_i_0C); 
+   } 
+   if (Li_FFF4 > 0) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0 && (Fa_d_03 < Id_0148)) { 
+   Fa_d_03 = Id_0148;
+   } 
+   Gi_0000 = (int)Fa_d_04;
+   if (Gi_0000 > 0 && (Fa_d_04 < Id_0148)) { 
+   Fa_d_04 = Id_0148;
+   } 
+   Li_FFEC = 1;
+   if (Fa_i_0C < 1) return Li_FFF4; 
+   do { 
+   RefreshRates();
+   tmp_str0003 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0003, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0003, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0003, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0003, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0003, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0003, MODE_STOPLEVEL);
+   if ((Fa_d_09 == 0)) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_03 * Id_0138);
+   Fa_d_09 = (Fa_d_01 - Gd_0000);
+   }} 
+   if ((Fa_d_0A == 0)) { 
+   Gi_0000 = (int)Fa_d_04;
+   if (Gi_0000 > 0) { 
+   Fa_d_0A = ((Fa_d_04 * Id_0138) + Fa_d_01);
+   }} 
+   if ((Fa_d_09 != 0) != true) { 
+   if ((Fa_d_0A == 0)) return Li_FFF4; 
+   } 
+   Fa_d_09 = NormalizeDouble(Fa_d_09, Ii_0140);
+   returned_double = NormalizeDouble(Fa_d_0A, Ii_0140);
+   Fa_d_0A = returned_double;
+   Lb_FFFB = OrderModify(Li_FFF4, Fa_d_01, Fa_d_09, returned_double, Fa_l_08, Fa_i_0B);
+   if (Lb_FFFB != 0) return Li_FFF4; 
+   if (Li_FFEC == Fa_i_0C) { 
+   tmp_str0004 = DoubleToString(Fa_d_0A, Ii_0140);
+   tmp_str0005 = DoubleToString(Fa_d_09, Ii_0140);
+   Print(Li_FFF4, "止损价格", tmp_str0005, "止盈价格", tmp_str0004, "设置失败,代码=", GetLastError());
+   } 
+   else { 
+   Sleep(100);
+   } 
+   Li_FFEC = Li_FFEC + 1;
+   } while (Li_FFEC <= Fa_i_0C); 
+   return Li_FFF4;
+   } 
+   tmp_str0006 = DoubleToString(Fa_d_01, Ii_0140);
+   Print("挂多单价格", tmp_str0006, "手数", Fa_d_02, "挂单失败,代码=", GetLastError());
+   
+   Li_FFFC = Li_FFF4;
+   
+   return Li_FFFC;
+}
+
+int func_1088(string Fa_s_00, double Fa_d_01, double Fa_d_02, double Fa_d_03, double Fa_d_04, int Fa_i_05, string Fa_s_06, int Fa_i_07, long Fa_l_08, double Fa_d_09, double Fa_d_0A, int Fa_i_0B, int Fa_i_0C)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   bool Lb_FFFB;
+   int Li_FFF4;
+   int Li_FFF0;
+   int Li_FFFC;
+   int Li_FFEC;
+
+   Lb_FFFB = false;
+   Li_FFF4 = 0;
+   tmp_str0000 = Fa_s_00;
+   func_1076(tmp_str0000, Fa_d_02, true);
+   Fa_d_01 = NormalizeDouble(Fa_d_01, Ii_0140);
+   Li_FFF0 = 1;
+   if (Fa_i_0C >= 1) { 
+   do { 
+   RefreshRates();
+   tmp_str0001 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0001, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0001, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0001, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0001, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0001, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0001, MODE_STOPLEVEL);
+   Gd_0000 = fabs((Id_0120 - Fa_d_01));
+   if ((Gd_0000 < (Id_0148 * Id_0138))) { 
+   tmp_str0002 = DoubleToString(Fa_d_01, Ii_0140);
+   Print("挂单价：", tmp_str0002, "挂单距离小于平台最小要求距离");
+   Li_FFFC = Li_FFF4;
+   return Li_FFFC;
+   } 
+   if ((Id_0120 < Fa_d_01)) { 
+   Li_FFF4 = OrderSend(Fa_s_00, 3, Fa_d_02, Fa_d_01, Fa_i_07, 0, 0, Fa_s_06, Fa_i_05, Fa_l_08, Fa_i_0B);
+   } 
+   else { 
+   Li_FFF4 = OrderSend(Fa_s_00, 5, Fa_d_02, Fa_d_01, Fa_i_07, 0, 0, Fa_s_06, Fa_i_05, Fa_l_08, Fa_i_0B);
+   } 
+   if (Li_FFF4 > 0) break; 
+   Sleep(100);
+   Li_FFF0 = Li_FFF0 + 1;
+   } while (Li_FFF0 <= Fa_i_0C); 
+   } 
+   if (Li_FFF4 > 0) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0 && (Fa_d_03 < Id_0148)) { 
+   Fa_d_03 = Id_0148;
+   } 
+   Gi_0000 = (int)Fa_d_04;
+   if (Gi_0000 > 0 && (Fa_d_04 < Id_0148)) { 
+   Fa_d_04 = Id_0148;
+   } 
+   Li_FFEC = 1;
+   if (Fa_i_0C < 1) return Li_FFF4; 
+   do { 
+   RefreshRates();
+   tmp_str0003 = Fa_s_00;
+   Id_0120 = MarketInfo(tmp_str0003, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0003, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0003, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0003, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0003, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0003, MODE_STOPLEVEL);
+   if ((Fa_d_09 == 0)) { 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) { 
+   Fa_d_09 = ((Fa_d_03 * Id_0138) + Fa_d_01);
+   }} 
+   if ((Fa_d_0A == 0)) { 
+   Gi_0000 = (int)Fa_d_04;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_04 * Id_0138);
+   Fa_d_0A = (Fa_d_01 - Gd_0000);
+   }} 
+   if ((Fa_d_09 != 0) != true) { 
+   if ((Fa_d_0A == 0)) return Li_FFF4; 
+   } 
+   Fa_d_09 = NormalizeDouble(Fa_d_09, Ii_0140);
+   returned_double = NormalizeDouble(Fa_d_0A, Ii_0140);
+   Fa_d_0A = returned_double;
+   Lb_FFFB = OrderModify(Li_FFF4, Fa_d_01, Fa_d_09, returned_double, Fa_l_08, Fa_i_0B);
+   if (Lb_FFFB != 0) return Li_FFF4; 
+   if (Li_FFEC == Fa_i_0C) { 
+   tmp_str0004 = DoubleToString(Fa_d_0A, Ii_0140);
+   tmp_str0005 = DoubleToString(Fa_d_09, Ii_0140);
+   Print(Li_FFF4, "止损价格", tmp_str0005, "止盈价格", tmp_str0004, "设置失败,代码=", GetLastError());
+   } 
+   else { 
+   Sleep(100);
+   } 
+   Li_FFEC = Li_FFEC + 1;
+   } while (Li_FFEC <= Fa_i_0C); 
+   return Li_FFF4;
+   } 
+   tmp_str0006 = DoubleToString(Fa_d_01, Ii_0140);
+   Print("挂空单价格", tmp_str0006, "手数", Fa_d_02, "挂单失败,代码=", GetLastError());
+   
+   Li_FFFC = Li_FFF4;
+   
+   return Li_FFFC;
+}
+
+void func_1089(string Fa_s_00, int Fa_i_01, double Fa_d_02, double Fa_d_03, int Fa_i_04, string Fa_s_05, int Fa_i_06, int Fa_i_07, int Fa_i_08, int Fa_i_09)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   bool Lb_FFFF;
+   double Ld_FFF0;
+   int Li_FFEC;
+   int Li_FFE8;
+   double Ld_FFE0;
+   double Ld_FFD8;
+   bool Lb_FFD7;
+   int Li_FFD0;
+   int Li_FFCC;
+
+   Lb_FFFF = false;
+   Ld_FFF0 = 0;
+   Li_FFEC = 0;
+   Li_FFE8 = 0;
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0 && (Fa_d_02 < Id_0148)) { 
+   Fa_d_02 = Id_0148;
+   } 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0 && (Fa_d_03 < Id_0148)) { 
+   Fa_d_03 = Id_0148;
+   } 
+   Ld_FFE0 = 0;
+   Ld_FFD8 = 0;
+   Lb_FFD7 = false;
+   returned_i = OrdersTotal();
+   Li_FFD0 = returned_i;
+   Li_FFCC = Li_FFD0;
+   if (returned_i < 0) return; 
+   do { 
+   if (OrderSelect(Li_FFCC, 0, 0) == true) { 
+   if (Fa_s_00 == "" || OrderSymbol() == Fa_s_00) {
+   
+   if (Fa_i_04 == -1 || OrderMagicNumber() == Fa_i_04) {
+   
+   if (Fa_s_05 == "" || Fa_s_05 == ""
+   || StringFind(OrderComment(), Fa_s_05, 0) == false
+   || OrderComment() == Fa_s_05) {
+   
+   if (func_1071(OrderType(), Fa_i_06) == true) { 
+   tmp_str0001 = OrderSymbol();
+   Id_0120 = MarketInfo(tmp_str0001, MODE_BID);
+   Id_0118 = MarketInfo(tmp_str0001, MODE_ASK);
+   Id_0138 = MarketInfo(tmp_str0001, MODE_POINT);
+   Ii_0140 = (int)MarketInfo(tmp_str0001, MODE_DIGITS);
+   Ii_0144 = (int)MarketInfo(tmp_str0001, MODE_SPREAD);
+   Id_0148 = (int)MarketInfo(tmp_str0001, MODE_STOPLEVEL);
+   Lb_FFD7 = false;
+   Li_FFE8 = OrderTicket();
+   Ld_FFF0 = 0;
+   Ld_FFE0 = 0;
+   Ld_FFD8 = 0;
+   if (OrderType() == OP_BUYSTOP) {
+   Ld_FFF0 = ((Fa_i_01 * Id_0138) + Id_0118);
+   Gd_0000 = (Fa_i_07 * Id_0138);
+   if ((Ld_FFF0 < (OrderOpenPrice() - Gd_0000))) {
+   Lb_FFD7 = true;
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_02 * Id_0138);
+   Ld_FFE0 = (Ld_FFF0 - Gd_0000);
+   } 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) {
+   Ld_FFD8 = ((Fa_d_03 * Id_0138) + Ld_FFF0);
+   }}}
+   else{
+   if (OrderType() == OP_SELLSTOP) {
+   Gd_0000 = (Fa_i_01 * Id_0138);
+   Ld_FFF0 = (Id_0120 - Gd_0000);
+   if ((Ld_FFF0 > ((Fa_i_07 * Id_0138) + OrderOpenPrice()))) {
+   Lb_FFD7 = true;
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Ld_FFE0 = ((Fa_d_02 * Id_0138) + Ld_FFF0);
+   } 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) {
+   Gd_0000 = (Fa_d_03 * Id_0138);
+   Ld_FFD8 = (Ld_FFF0 - Gd_0000);
+   }}}
+   else{
+   if (OrderType() == OP_BUYLIMIT) {
+   Gd_0000 = (Fa_i_01 * Id_0138);
+   Ld_FFF0 = (Id_0118 - Gd_0000);
+   if ((Ld_FFF0 > ((Fa_i_07 * Id_0138) + OrderOpenPrice()))) {
+   Lb_FFD7 = true;
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_02 * Id_0138);
+   Ld_FFE0 = (Ld_FFF0 - Gd_0000);
+   } 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) {
+   Ld_FFD8 = ((Fa_d_03 * Id_0138) + Ld_FFF0);
+   }}}
+   else{
+   if (OrderType() == OP_SELLLIMIT) { 
+   Ld_FFF0 = ((Fa_i_01 * Id_0138) + Id_0120);
+   Gd_0000 = (Fa_i_07 * Id_0138);
+   if ((Ld_FFF0 < (OrderOpenPrice() - Gd_0000))) { 
+   Lb_FFD7 = true;
+   Gi_0000 = (int)Fa_d_02;
+   if (Gi_0000 > 0) { 
+   Ld_FFE0 = ((Fa_d_02 * Id_0138) + Ld_FFF0);
+   } 
+   Gi_0000 = (int)Fa_d_03;
+   if (Gi_0000 > 0) { 
+   Gd_0000 = (Fa_d_03 * Id_0138);
+   Ld_FFD8 = (Ld_FFF0 - Gd_0000);
+   }}}}}} 
+   if (Lb_FFD7 == true) { 
+   Lb_FFFF = OrderModify(Li_FFE8, Ld_FFF0, Ld_FFE0, Ld_FFD8, OrderExpiration(), Fa_i_08);
+   }}}}}} 
+   Li_FFCC = Li_FFCC - 1;
+   } while (Li_FFCC >= 0); 
+   
+}
+
+void func_1096(string Fa_s_00, int Fa_i_01, int Fa_i_02, double Fa_d_03)
+{
+   string tmp_str0000;
+   string tmp_str0001;
+   string tmp_str0002;
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   string tmp_str0006;
+   double Ld_FFF8;
+   long Ll_FFF0;
+   int Li_FFEC;
+
+   tmp_str0000 = Input_Pointer_00000340.m_16 + "STOP OPEN";
+   Gi_0000 = (int)GlobalVariableGet(tmp_str0000);
+   Ib_0338 = Gi_0000;
+   if (Ib_0338 == 0) { 
+   Input_Pointer_00000178.func_1046();
+   Ld_FFF8 = Input_Pointer_00000178.m_260.m_164;
+   Gd_0000 = -Fa_d_03;
+   if ((Input_Pointer_00000178.m_260.m_164 > Gd_0000)) return; 
+   if (func_1086(Input_Pointer_00000178.m_208, 0, 2237106, 2) <= 0) return; 
+   Input_Pointer_00000178.func_1046();
+   if (Input_Pointer_00000178.m_260.m_156 > 0) { 
+   Sleep(200);
+   func_1086(Input_Pointer_00000178.m_208, 0, 2237106, 2);
+   } 
+   Ib_0338 = true;
+   tmp_str0001 = Input_Pointer_00000340.m_16 + "STOP OPEN";
+   GlobalVariableSet(tmp_str0001, 1);
+   Gi_0000 = (int)TimeCurrent();
+   tmp_str0002 = Input_Pointer_00000340.m_16 + "STOP TIME";
+   GlobalVariableSet(tmp_str0002, Gi_0000);
+   PrintFormat("浮亏全部平仓,当前浮亏金额%f", Ld_FFF8);
+   return ;
+   } 
+   tmp_str0003 = Input_Pointer_00000340.m_16 + "STOP TIME";
+   Gi_0001 = (int)GlobalVariableGet(tmp_str0003);
+   Ll_FFF0 = Gi_0001;
+   Gi_0001 = Fa_i_01;
+   tmp_str0004 = Fa_s_00;
+   Gl_0002 = TimeCurrent();
+   Gl_0003 = Ll_FFF0;
+   Gi_0004 = iBarShift(tmp_str0004, Fa_i_01, Ll_FFF0, false);
+   Gi_0005 = iBarShift(tmp_str0004, Fa_i_01, Gl_0002, false);
+   Gi_0006 = Gi_0004 - Gi_0005;
+   Gi_0007 = Gi_0006;
+   Gi_0008 = 0;
+   if (Fa_i_01 == 0) { 
+   Gi_0006 = _Period * Gi_0006;
+   Gi_0006 = Gi_0006 * 60;
+   Gi_0008 = Gi_0006;
+   } 
+   else { 
+   Gi_0006 = Gi_0001 * Gi_0007;
+   Gi_0006 = Gi_0006 * 60;
+   Gi_0008 = Gi_0006;
+   } 
+   Gl_0006 = Gl_0003 - iTime(tmp_str0004, Gi_0001, Gi_0004);
+   Gl_0009 = Gi_0008;
+   Gl_0009 = Gl_0009 - Gl_0006;
+   Gi_0009 = (int)Gl_0009;
+   Gi_0008 = Gi_0009;
+   Gl_000A = Gl_0002 - iTime(tmp_str0004, Gi_0001, Gi_0005);
+   Gl_0009 = Gi_0009;
+   Gl_0009 = Gl_0009 + Gl_000A;
+   Gi_0009 = (int)Gl_0009;
+   Gi_0008 = Gi_0009;
+   Li_FFEC = Gi_0009;
+   Gi_000B = Fa_i_02 * 3600;
+   if (Gi_0009 <= Gi_000B) return; 
+   Ib_0338 = false;
+   tmp_str0005 = Input_Pointer_00000340.m_16 + "STOP OPEN";
+   GlobalVariableSet(tmp_str0005, 0);
+   tmp_str0006 = (string)Ll_FFF0;
+   PrintFormat("亏损平仓时间%s,运行经过秒%d,允许开单", tmp_str0006, Gi_0009);
+   
+}
+
+bool func_1098()
+{
+   string tmp_str0003;
+   string tmp_str0004;
+   string tmp_str0005;
+   bool Lb_FFFE;
+   string Ls_FFF0;
+   string Ls_FFD0;
+   string Ls_FF80;
+   bool Lb_FFFF;
+
+   Lb_FFFE = false;
+   Ls_FFF0 = "";
+   Ls_FFD0 = Is_0008;
+   if (Ib_0001) { 
+   long accountNumber = AccountNumber();
+   int accountHash = (int)(accountNumber ^ AccountHashMagic); 
+   bool accountValid = false;
+   for(int i = 0; i < ArraySize(AllowedAccountHashes); i++)
+   {
+      if(accountHash == AllowedAccountHashes[i])
+      {
+         accountValid = true;
+         break;
+      }
+   }
+   if (!accountValid) { 
+   Ls_FFF0 = Is_0040;
+   Lb_FFFE = false;
+   } 
+   else {
+   Lb_FFFE = true;
+   }
+   } 
+   else { 
+   Lb_FFFE = true;
+   } 
+   if (Ib_0002) {
+   long currentTimestamp = (long)TimeCurrent();
+   if (currentTimestamp > ExpiryTimestamp) { 
+   tmp_str0003 = Is_0050;
+   if (Ls_FFF0 != "") { 
+   tmp_str0004 = "\n" + Is_0050;
+   Ls_FFF0 = Ls_FFF0 + tmp_str0004;
+   } 
+   else { 
+   Ls_FFF0 = tmp_str0003;
+   } 
+   Lb_FFFE = false;
+   }
+   } 
+   if (Ib_0000 && Ls_FFD0 != "") { 
+   Ls_FF80 = AccountServer();
+   if (StringFind(Ls_FF80, Ls_FFD0, 0) < 0) { 
+   tmp_str0004 = Is_0030;
+   if (Ls_FFF0 != "") { 
+   tmp_str0005 = "\n" + Is_0030;
+   Ls_FFF0 = Ls_FFF0 + tmp_str0005;
+   } 
+   else { 
+   Ls_FFF0 = tmp_str0004;
+   } 
+   Lb_FFFE = false;
+   }} 
+   if (Lb_FFFE) return Lb_FFFE; 
+   if (Ls_FFF0 == "") return Lb_FFFE; 
+   Alert(Ls_FFF0);
+   
+   Lb_FFFF = Lb_FFFE;
+   return Lb_FFFE;
+}
